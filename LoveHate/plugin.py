@@ -111,10 +111,12 @@ class LoveHate(callbacks.Plugin):
       irc.reply(response)      
       
     def lovers(self, irc, msg, args, channel):
+      """No description."""
       self._top(irc, msg, args, channel, 'love')
     lovers = wrap(lovers, ['channeldb'])
       
     def haters(self, irc, msg, args, channel):
+      """No description."""
       self._top(irc, msg, args, channel, 'hate')
     haters = wrap(haters, ['channeldb'])
 
@@ -142,6 +144,7 @@ class LoveHate(callbacks.Plugin):
         except StopIteration:
             irc.reply("I have no record of %s's loving or hating %s" % (msg.nick, thing))
     dontcare = wrap(dontcare, ['channeldb', 'text'])
+    meh = dontcare
 
     def _find_stuff_out(self, channel, predicate, emotion, extractor = lambda r: r):
         predicates = [predicate]
@@ -265,6 +268,7 @@ class LoveHate(callbacks.Plugin):
     random = wrap(random, ['channeldb',optional(("literal", ("love","hate")))])
     
     def get(self, irc, msg, args, channel, id):
+        """No description."""
         if id == None:
             records = self.db.select(channel, lambda r: True)
             responses = []
@@ -277,6 +281,7 @@ class LoveHate(callbacks.Plugin):
     get = wrap(get, [('checkCapability','admin'), 'channeldb', optional('id')])
     
     def remove(self, irc, msg, args, channel, id):
+        """No description."""
         if id == None:
             irc.reply('No id specified')
         try:

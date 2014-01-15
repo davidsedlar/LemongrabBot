@@ -38,6 +38,8 @@ import supybot.conf as conf
 import re
 import supybot.utils as utils
 import supybot.ircutils as ircutils
+
+
 import threading, random, pickle, os, time, datetime
 
 
@@ -88,8 +90,8 @@ class DuckHunt(callbacks.Plugin):
     # Other params
     perfectbonus = 5 # How many extra-points are given when someones does a perfect hunt?
     toplist = 5      # How many high{scores|times} are displayed by default?
-    dow = int(time.strftime("%u")) # Day of week
-    woy = int(time.strftime("%V")) # Week of year
+    dow = int(time.strftime("%w")) # Day of week
+    woy = int(time.strftime("%W")) # Week of year
     year = time.strftime("%Y") 
     dayname = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Caturday', 'Saturday', 'Sunday']
 
@@ -866,6 +868,8 @@ class DuckHunt(callbacks.Plugin):
 					irc.queueMsg(msg)
 #					irc.reply("%s: %i for being an asshat! >:|" % (msg.nick,  self.scores[currentChannel][msg.nick]))		
 
+
+
     def bang(self, irc, msg, args):
         """
         Shoots the duck!
@@ -880,6 +884,8 @@ class DuckHunt(callbacks.Plugin):
 			bangdelay = time.time() - self.times[currentChannel]
 		    else:
 			bangdelay = False
+
+
 		    # Is the player reloading?
 		    if (self.reloading[currentChannel].get(msg.nick) and time.time() - self.reloading[currentChannel][msg.nick] < self.reloadtime[currentChannel]):
 			irc.reply("%s, you are reloading... (Reloading takes %i seconds)" % (msg.nick, self.reloadtime[currentChannel]))
@@ -1174,6 +1180,8 @@ class DuckHunt(callbacks.Plugin):
 	else:
 	    irc.error('You have to be on a channel')
 	    
+
+
 Class = DuckHunt
 
 # vim:set shiftwidth=4 softtabstop=4 expandtab textwidth=79:

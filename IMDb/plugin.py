@@ -33,7 +33,30 @@ class IMDb(callbacks.Plugin):
         self.__parent = super(IMDb, self)
         self.__parent.__init__(irc)
 
+    def randomimdb(self, irc, msg, args):
+        """output info from IMDb about a random popular title """
+		
+        req = urllib2.Request('http://www.imdb.com/random/title')
+		
+        try:
+            page = urllib2.urlopen(req)
+        except socket.timeout, e:
+            irc.error('\x0304Connection timed out.\x03', prefixNick=False)
+            return
+        except urllib2.HTTPError, e:
+            irc.error('\x0304HTTP Error\x03', prefixNick=False)
+            return
+        except urllib2.URLError, e:
+            irc.error('\x0304URL Error\x03', prefixNick=False)
+            return
+			
+        finalurl = page.geturl()
+        self._imdbinfo(irc, finalurl)
 
+    randomimdb = wrap(randomimdb)
+    whatshouldiwatch = randomimdb
+		
+		
     def imdb(self, irc, msg, args, opts, text):
         """<movie>
         output info from IMDb about a movie"""
@@ -68,8 +91,13 @@ class IMDb(callbacks.Plugin):
 
         if imdb_url is None:
             irc.error('\x0304Couldnt find a title')
-            return
+            return 
+		
+	self._imdbinfo(irc, imdb_url)
+			
+    imdb = wrap(imdb, [getopts({'s': '', 'short': ''}), 'text'])
 
+    def _imdbinfo(self, irc, imdb_url):
         request = urllib2.Request(imdb_url, 
                 headers={'User-Agent': 'Mozilla/5.0 (X11; Linux i686; rv:5.0) Gecko/20100101 Firefox/5.0',
                         'Accept-Language': 'en-us,en;q=0.5'})
@@ -123,7 +151,7 @@ class IMDb(callbacks.Plugin):
         else:
             description = 'N/A'
 
-        elem = root.xpath('//a[@itemprop="director"]')
+        elem = root.xpath('//div[@itemprop="director"]/a/span')
         if elem:
             director = unid(elem[0].text)
         else:
@@ -172,8 +200,6 @@ class IMDb(callbacks.Plugin):
 #
 #        if runtime:
 #            irc.reply('\x0305Runtime:\x03 %s' % runtime, prefixNick=False)
-
-    imdb = wrap(imdb, [getopts({'s': '', 'short': ''}), 'text'])
 
 
 Class = IMDb
