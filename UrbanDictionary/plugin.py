@@ -30,6 +30,7 @@
 
 import urllib2
 import re
+from lxml import html
 import supybot.utils as utils
 from supybot.commands import *
 import supybot.plugins as plugins
@@ -46,12 +47,13 @@ class UrbanDictionary(callbacks.Plugin):
         url = "http://www.urbandictionary.com/define.php?term="+term
         irc.reply(url)
         req = urllib2.Request(url, None, { 'User-Agent' : user_agent})
-        file = urllib2.urlopen(req)
-        source = file.read()
-        re_defines = re.compile(r'.*class="definition"\>(.*)\<\/div\>\<di')
-        defines = re.findall(re_defines, source)
+        page = urllib2.urlopen(req)
+
+	root = html.parse(page)
+        defines = root.xpath('//div[@class="definition"]')
         defs = ""
-        for lol in defines:
+        for definition in defines:
+	    lol = definition.text_content().strip()
             lol = lol.replace('&quot;','"')
             lol = lol.replace('\r', ' ')
             lol = lol.replace('&lt;', '<')
