@@ -72,7 +72,7 @@ class UrbanDictionary(callbacks.Plugin):
         if defs:
             irc.reply(ircutils.bold(text) + ': ' + defs)
         else:
-            irc.reply("Tomt")
+            irc.reply("No soup for you! Try another term.")
     ud = wrap(ud,['text'])
 Class = UrbanDictionary
 
