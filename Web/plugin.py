@@ -93,16 +93,12 @@ class Web(callbacks.PluginRegexp):
             if callbacks.addressed(irc.nick, msg):
                 return
             if self.registryValue('titleSnarfer', channel):
-				youtube_pattern = re.compile('(?:www\.)?youtu(?:be\.com/watch\?v=|\.be/)([\w\?=\-]*)(&(amp;)?[\w\?=]*)?')
+				youtube_pattern = re.compile('(?:www.|)(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/ytscreeningroom\?v=|\/feeds\/api\/videos\/|\/user\S*[^\w\-\s]|\S*[^\w\-\s]))([\w\-]{11})[a-z0-9;:@?&%=+\/\$_.-]*')
 					
 				m = youtube_pattern.search(msg.args[1]);
 				if(m):
-					try:
-						r = requests.get('http://gdata.youtube.com/feeds/api/videos/%s?v=2&alt=json' % m.group(1))
-						data = json.loads(r.content)
-					except:
-						r = requests.get('http://gdata.youtube.com/feeds/api/videos/%s?v=2&alt=json' % m.group(5))
-						data = json.loads(r.content)
+					r = requests.get('http://gdata.youtube.com/feeds/api/videos/%s?v=2&alt=json' % m.group(1))
+					data = json.loads(r.content)
 					try:
 						likes = float(data['entry']["yt$rating"]['numLikes'])
 					except KeyError:
