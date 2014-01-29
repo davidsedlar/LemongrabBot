@@ -50,7 +50,7 @@ class UrbanDictionary(callbacks.Plugin):
         page = urllib2.urlopen(req)
 
 	root = html.parse(page)
-        defines = root.xpath('//div[@class="definition"]')
+        defines = root.xpath('//div[@class="meaning"]')
         defs = ""
         for definition in defines:
 	    lol = definition.text_content().strip()
