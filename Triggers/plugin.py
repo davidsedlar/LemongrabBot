@@ -43,7 +43,7 @@ class Triggers(callbacks.PluginRegexp):
     """Add the help for "@plugin help Triggers" here
     This should describe *how* to use this plugin."""
     threaded = True
-    regexps = ['whatislove', 'penis', 'nohomo', 'smile', 'fuckyeah', 'thrust', 'birthday', 'kisses','licks', 'crumpets', 'gross', 'murica','whatwhat', 'hiphip']
+    regexps = ['whatislove', 'penis', 'nohomo', 'smile', 'fuckyeah', 'thrust', 'birthday', 'hugs', 'kisses', 'licks', 'crumpets', 'gross', 'murica','whatwhat', 'hiphip']
 
     def _color(self, c, fg=None):
         if c == ' ':
@@ -52,27 +52,27 @@ class Triggers(callbacks.PluginRegexp):
             fg = str(random.randint(2, 15)).zfill(2)
         return '\x03%s%s' % (fg, c)
 
-#     def hugs(self,irc,msg,match):
-#         r'ACTION(.+)?[Hh]ugs(.+)?'
-#         if re.search(r'[Pp]oohbot', msg.args[1], re.I):
-#         	irc.reply("""hugs %s back""" % msg.nick,prefixNick=False, action=True)
-#         else:
-#     		return
+    def hugs(self,irc,msg,match):
+        r'ACTION(.+)?[Hh]ugs(.+)?'
+        if re.search(r'[Ll]emon[Gg]rab', msg.args[1], re.I):
+            irc.reply("""hugs %s back""" % msg.nick,prefixNick=False, action=True)
+        else:
+            return
     
     def licks(self,irc,msg,match):
         r'ACTION(.+)?[Ll]icks(.+)?'
-        if re.search(r'[Pp]oohbot', msg.args[1], re.I):
-        	irc.reply("""o_O""",prefixNick=False)
-        	irc.reply("""O_o""",prefixNick=False)
+        if re.search(r'[Ll]emon[Gg]rab', msg.args[1], re.I):
+            irc.reply("""o_O""",prefixNick=False)
+            irc.reply("""O_o""",prefixNick=False)
         else:
-    		return
+    	    return
         
     def kisses(self,irc,msg,match):
         r'ACTION(.+)?[Kk]isses(.+)?'
-        if re.search(r'[Pp]oohbot', msg.args[1], re.I):
-        	irc.reply("""blushes""",prefixNick=False, action=True)
+        if re.search(r'[Ll]emon[Gg]rab', msg.args[1], re.I):
+            irc.reply("""blushes""",prefixNick=False, action=True)
         else:
-    		return
+    	    return
     		
     def murica(self,irc,msg,match):
         r'(.+)?[Mm]urica(.+)?'
@@ -151,15 +151,15 @@ class Triggers(callbacks.PluginRegexp):
         
         irc.reply("""Crumpets? What is this sorcery?""",prefixNick=False)
 
-#    def derp(self,irc,msg,match):
-#        r'[Dd]erp'
-#        
-#        irc.reply("""herp""",prefixNick=False)
+    def derp(self,irc,msg,match):
+        r'[Dd]erp'
+       
+        irc.reply("""herp""",prefixNick=False)
 
-#    def herp(self,irc,msg,match):
-#        r'[Hh]erp'
-#        
-#        irc.reply("""derp""",prefixNick=False)
+    def herp(self,irc,msg,match):
+        r'[Hh]erp'
+       
+        irc.reply("""derp""",prefixNick=False)
     
     def gross(self, irc, msg, match):
         r'(.+)?[Gg]ross(.*)\!'
