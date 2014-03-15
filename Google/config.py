@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2005, Jeremiah Fincher
-# Copyright (c) 2008-2010, James Vega
+# Copyright (c) 2008-2010, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -90,7 +90,7 @@ class NumSearchResults(registry.PositiveInteger):
     def setValue(self, v):
         if v > 8:
             self.error()
-        super(NumSearchResults, self).setValue(v)
+        super(self.__class__, self).setValue(v)
 
 class SafeSearch(registry.OnlySomeStrings):
     validStrings = ['active', 'moderate', 'off']
@@ -101,6 +101,9 @@ conf.registerGlobalValue(Google, 'referer',
     the Referer field of the search requests.  If this value is empty, a
     Referer will be generated in the following format:
     http://$server/$botName""")))
+conf.registerChannelValue(Google, 'baseUrl',
+    registry.String('google.com', _("""Determines the base URL used for
+    requests.""")))
 conf.registerChannelValue(Google, 'searchSnarfer',
     registry.Boolean(False, _("""Determines whether the search snarfer is
     enabled.  If so, messages (even unaddressed ones) beginning with the word
@@ -115,7 +118,7 @@ conf.registerChannelValue(Google, 'oneToOne',
     registry.Boolean(False, _("""Determines whether results are sent in
     different lines or all in the same one.""")))
 conf.registerChannelValue(Google, 'maximumResults',
-    NumSearchResults(3, _("""Determines the maximum number of results returned
+    NumSearchResults(8, _("""Determines the maximum number of results returned
     from the google command.""")))
 conf.registerChannelValue(Google, 'defaultLanguage',
     Language('lang_'+ _('en'), _("""Determines what default language is used in

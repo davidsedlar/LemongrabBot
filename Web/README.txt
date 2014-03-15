@@ -1,0 +1,1 @@
+This plugin allows you to view website information, like a title.
