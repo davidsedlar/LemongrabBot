@@ -35,8 +35,6 @@ import supybot.callbacks as callbacks
 from supybot.i18n import PluginInternationalization, internationalizeDocstring
 _ = PluginInternationalization('Protector')
 
-reason = "Venganza!"
-
 class Protector(callbacks.Plugin):
     def isImmune(self, irc, msg):
         if not ircutils.isUserHostmask(msg.prefix):
@@ -72,6 +70,7 @@ class Protector(callbacks.Plugin):
 
     def demote(self, irc, channel, nick):
         irc.queueMsg(ircmsgs.deop(channel, nick))
+
     def __call__(self, irc, msg):
         def ignore(reason):
             self.log.debug('Ignoring %q, %s.', msg, reason)

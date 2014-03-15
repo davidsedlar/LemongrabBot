@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2002-2005, Jeremiah Fincher
-# Copyright (c) 2008, James Vega
+# Copyright (c) 2008, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -98,6 +98,7 @@ class MiscTestCase(ChannelPluginTestCase):
     def testList(self):
         self.assertNotError('list')
         self.assertNotError('list Misc')
+        self.assertRegexp('list --unloaded', 'Ctcp')
 
     def testListIsCaseInsensitive(self):
         self.assertNotError('list misc')
@@ -131,8 +132,8 @@ class MiscTestCase(ChannelPluginTestCase):
 
     if network:
         def testVersion(self):
-            print '*** This test should start passing when we have our '\
-                  'threaded issues resolved.'
+            print('*** This test should start passing when we have our '\
+                  'threaded issues resolved.')
             self.assertNotError('version')
 
     def testSource(self):
@@ -141,11 +142,14 @@ class MiscTestCase(ChannelPluginTestCase):
     def testTell(self):
         # This test fails because the test is seeing us as owner and Misc.tell
         # allows the owner to send messages to people the bot hasn't seen.
+        oldprefix, self.prefix = self.prefix, 'tester!foo@bar__no_testcap__baz'
+        self.nick = 'tester'
         m = self.getMsg('tell aljsdkfh [plugin tell]')
         self.failUnless('let you do' in m.args[1])
         m = self.getMsg('tell #foo [plugin tell]')
         self.failUnless('No need for' in m.args[1])
         m = self.getMsg('tell me you love me')
+        m = self.irc.takeMsg()
         self.failUnless(m.args[0] == self.nick)
 
     def testNoNestedTell(self):
@@ -208,9 +212,28 @@ class MiscTestCase(ChannelPluginTestCase):
         self.assertRegexp('echo %s' % ('abc'*300), 'more')
         self.assertRegexp('more', 'more')
         self.assertNotRegexp('more', 'more')
+        with conf.supybot.plugins.Misc.mores.context(2):
+            self.assertRegexp('echo %s' % ('abc'*600), 'more')
+
+            self.assertNotRegexp('more', 'more')
+            m = self.irc.takeMsg()
+            self.assertIsNot(m, None)
+            self.assertIn('more', m.args[1])
+
+            self.assertNotRegexp('more', 'more')
+            m = self.irc.takeMsg()
+            self.assertIsNot(m, None)
+            self.assertNotIn('more', m.args[1])
 
     def testInvalidCommand(self):
         self.assertError('echo []')
+
+    def testInvalidCommands(self):
+        with conf.supybot.abuse.flood.command.invalid.maximum.context(3):
+            self.assertNotRegexp('foo', 'given me', frm='f!f@__no_testcap__')
+            self.assertNotRegexp('bar', 'given me', frm='f!f@__no_testcap__')
+            self.assertNotRegexp('baz', 'given me', frm='f!f@__no_testcap__')
+            self.assertRegexp('qux', 'given me', frm='f!f@__no_testcap__')
 
     def testMoreIsCaseInsensitive(self):
         self.assertNotError('echo %s' % ('abc'*2000))

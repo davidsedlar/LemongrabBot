@@ -61,7 +61,7 @@ class Praise(plugins.ChannelIdDatabasePlugin):
         sent in the channel itself.
         """
         if ' for ' in text:
-            (target, reason) = map(str.strip, text.split(' for ', 1))
+            (target, reason) = list(map(str.strip, text.split(' for ', 1)))
         else:
             (target, reason) = (text, '')
         if ircutils.strEqual(target, irc.nick):
@@ -86,7 +86,7 @@ class Praise(plugins.ChannelIdDatabasePlugin):
             text += _(' for ') + reason
         if self.registryValue('showIds', channel):
             text += format(' (#%i)', praise.id)
-        irc.reply(text, action=False)
+        irc.reply(text, action=True)
     praise = wrap(praise, ['channeldb', optional('id'), 'text'])
 Praise = internationalizeDocstring(Praise)
 

@@ -121,11 +121,14 @@ class GithubRepository(GitRepository):
         dirname = ''.join((self._path, plugin))
         directories = conf.supybot.directories.plugins()
         directory = self._getWritableDirectoryFromList(directories)
-        assert directory is not None
+        assert directory is not None, \
+                'No valid directory in supybot.directories.plugins.'
 
         try:
-            assert archive.getmember(prefix + dirname).isdir()
+            assert archive.getmember(prefix + dirname).isdir(), \
+                'This is not a valid plugin (it is a file, not a directory).'
 
+            run_2to3 = sys.version_info[0] >= 3
             for file in archive.getmembers():
                 if file.name.startswith(prefix + dirname):
                     extractedFile = archive.extractfile(file)
@@ -133,15 +136,50 @@ class GithubRepository(GitRepository):
                     newFileName = newFileName[len(self._path)-1:]
                     newFileName = os.path.join(directory, newFileName)
                     if os.path.exists(newFileName):
-                        assert os.path.isdir(newFileName)
+                        assert os.path.isdir(newFileName), newFileName + \
+                                'should not be a file.'
                         shutil.rmtree(newFileName)
                     if extractedFile is None:
                         os.mkdir(newFileName)
                     else:
-                        open(newFileName, 'ab').write(extractedFile.read())
+                        with open(newFileName, 'ab') as fd:
+                            reload_imported = False
+                            for line in extractedFile.readlines():
+                                if sys.version_info[0] >= 3:
+                                    if 'import reload' in line.decode():
+                                        reload_imported = True
+                                    elif not reload_imported and \
+                                            'reload(' in line.decode():
+                                        fd.write('from imp import reload\n' \
+                                                .encode())
+                                        reload_imported = True
+                                fd.write(line)
+                    if newFileName.endswith('__init__.py'):
+                        with open(newFileName) as fd:
+                            lines = list(filter(lambda x:'import plugin' in x,
+                                fd.readlines()))
+                            if lines and lines[0].startswith('from . import'):
+                                # This should be already Python 3-compatible
+                                run_2to3 = False
         finally:
             archive.close()
             del archive
+        if run_2to3:
+            try:
+                import lib2to3
+            except ImportError:
+                return _('Plugin is probably not compatible with your '
+                        'Python version (3.x) but could not be converted '
+                        'because 2to3 is not installed.')
+            import subprocess
+            fixers = []
+            subprocess.Popen(['2to3', '-wn', os.path.join(directory, plugin)]) \
+                    .wait()
+            return _('Plugin was designed for Python 2, but an attempt to '
+                    'convert it to Python 3 has been made. There is no '
+                    'garantee it will work, though.')
+        else:
+            return _('Plugin successfully installed.')
 
     def getInfo(self, plugin):
         archive = self._download(plugin)
@@ -150,7 +188,10 @@ class GithubRepository(GitRepository):
         for file in archive.getmembers():
             if file.name.startswith(prefix + dirname + '/README'):
                 extractedFile = archive.extractfile(file)
-                return extractedFile.read()
+                content = extractedFile.read()
+                if sys.version_info[0] >= 3:
+                    content = content.decode()
+                return content
 
     def _getWritableDirectoryFromList(self, directories):
         for directory in directories:
@@ -172,18 +213,18 @@ repositories = {
                                                    'stepnem',
                                                    'supybot-plugins',
                                                    ),
-               'gsf-snapshot':     GithubRepository(
-                                                   'gsf',
+               'code4lib-snapshot':GithubRepository(
+                                                   'code4lib',
                                                    'supybot-plugins',
                                                    'Supybot-plugins-20060723',
                                                    ),
-               'gsf-edsu':         GithubRepository(
-                                                   'gsf',
+               'code4lib-edsu':    GithubRepository(
+                                                   'code4lib',
                                                    'supybot-plugins',
                                                    'edsu-plugins',
                                                    ),
-               'gsf':              GithubRepository(
-                                                   'gsf',
+               'code4lib':         GithubRepository(
+                                                   'code4lib',
                                                    'supybot-plugins',
                                                    'plugins',
                                                    ),
@@ -239,6 +280,23 @@ repositories = {
                                                    'resistivecorpse',
                                                    'supybot-plugins'
                                                    ),
+               'frumious':         GithubRepository(
+                                                   'frumiousbandersnatch',
+                                                   'sobrieti-plugins',
+                                                   'plugins',
+                                                   ),
+               'jonimoose':        GithubRepository(
+                                                   'Jonimoose',
+                                                   'Supybot-plugins',
+                                                   ),
+               'skgsergio':        GithubRepository(
+                                                   'skgsergio',
+                                                   'Limnoria-plugins',
+                                                   ),
+               'GLolol':           GithubRepository(
+                                                   'GLolol',
+                                                   'SupyPlugins',
+                                                   ),
                }
 
 class PluginDownloader(callbacks.Plugin):
@@ -289,13 +347,13 @@ class PluginDownloader(callbacks.Plugin):
             irc.error(_('This plugin does not exist in this repository.'))
         else:
             try:
-                repositories[repository].install(plugin)
-                irc.replySuccess()
+                irc.reply(repositories[repository].install(plugin))
             except Exception as e:
-                raise e
-                #FIXME: more detailed error message
+                import traceback
+                traceback.print_exc()
                 log.error(str(e))
-                irc.error('The plugin could not be installed.')
+                irc.error('The plugin could not be installed. Check the logs '
+                        'for a more detailed error.')
 
     install = wrap(install, ['owner', 'something', 'something'])
 
@@ -321,9 +379,7 @@ class PluginDownloader(callbacks.Plugin):
                     irc.error(_('This plugin has no description.'))
                 else:
                     info = info.split('\n\n')[0]
-                    for line in info.split('\n'):
-                        if line != '':
-                            irc.reply(line)
+                    irc.reply(info.replace('\n', ' '))
     info = wrap(info, ['something', optional('something')])
 
 

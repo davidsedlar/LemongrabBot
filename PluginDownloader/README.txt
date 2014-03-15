@@ -1,0 +1,1 @@
+This plugin allows you to quickly download and install a plugin from other repositories.

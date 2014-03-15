@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2002-2005, Jeremiah Fincher
-# Copyright (c) 2008-2009, James Vega
+# Copyright (c) 2008-2009, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,10 +35,7 @@ import time
 import socket
 import linecache
 
-if sys.version_info >= (2, 5, 0):
-    import re as sre
-else:
-    import sre
+import re
 
 import supybot.log as log
 import supybot.conf as conf
@@ -112,7 +109,8 @@ class Owner(callbacks.Plugin):
         self.__parent = super(Owner, self)
         self.__parent.__init__(irc)
         # Setup command flood detection.
-        self.commands = ircutils.FloodQueue(60)
+        self.commands = ircutils.FloodQueue(conf.supybot.abuse.flood.interval())
+        conf.supybot.abuse.flood.interval.addCallback(self.setFloodQueueTimeout)
         # Setup plugins and default plugins for commands.
         #
         # This needs to be done before we connect to any networks so that the
@@ -144,9 +142,9 @@ class Owner(callbacks.Plugin):
             for network in conf.supybot.networks():
                 try:
                     self._connect(network)
-                except socket.error, e:
+                except socket.error as e:
                     self.log.error('Could not connect to %s: %s.', network, e)
-                except Exception, e:
+                except Exception as e:
                     self.log.exception('Exception connecting to %s:', network)
                     self.log.error('Could not connect to %s: %s.', network, e)
 
@@ -171,8 +169,8 @@ class Owner(callbacks.Plugin):
             (server, port) = group.servers()[0]
         except (registry.NonExistentRegistryEntry, IndexError):
             if serverPort is None:
-                raise ValueError, 'connect requires a (server, port) ' \
-                                  'if the network is not registered.'
+                raise ValueError('connect requires a (server, port) ' \
+                                  'if the network is not registered.')
             conf.registerNetwork(network, password, ssl)
             serverS = '%s:%s' % serverPort
             conf.supybot.networks.get(network).servers.append(serverS)
@@ -211,32 +209,34 @@ class Owner(callbacks.Plugin):
                             m = plugin.loadPluginModule(name,
                                                         ignoreDeprecation=True)
                             plugin.loadPluginClass(irc, m)
-                        except callbacks.Error, e:
+                        except callbacks.Error as e:
                             # This is just an error message.
                             log.warning(str(e))
-                        except (plugins.NoSuitableDatabase, ImportError), e:
+                        except (plugins.NoSuitableDatabase, ImportError) as e:
                             s = 'Failed to load %s: %s' % (name, e)
                             if not s.endswith('.'):
                                 s += '.'
                             log.warning(s)
-                        except Exception, e:
+                        except Exception as e:
                             log.exception('Failed to load %s:', name)
                 else:
                     # Let's import the module so configuration is preserved.
                     try:
                         _ = plugin.loadPluginModule(name)
-                    except Exception, e:
+                    except Exception as e:
                         log.debug('Attempted to load %s to preserve its '
                                   'configuration, but load failed: %s',
                                   name, e)
         world.starting = False
 
     def do376(self, irc, msg):
-        networkGroup = conf.supybot.networks.get(irc.network)
-        for channel in networkGroup.channels():
-            irc.queueMsg(networkGroup.channels.join(channel))
+        msg = conf.supybot.networks.get(irc.network).channels.joins()
+        if msg:
+            irc.queueMsg(msg)
     do422 = do377 = do376
 
+    def setFloodQueueTimeout(self, *args, **kwargs):
+        self.commands.timeout = conf.supybot.abuse.flood.interval()
     def doPrivmsg(self, irc, msg):
         assert self is irc.callbacks[0], \
                'Owner isn\'t first callback: %r' % irc.callbacks
@@ -250,27 +250,24 @@ class Owner(callbacks.Plugin):
                 return
             maximum = conf.supybot.abuse.flood.command.maximum()
             self.commands.enqueue(msg)
-            channel = msg.args[0]
-            msgcount = self.commands.len(msg)
-            if not irc.isChannel(channel):
-				msgcount = 0
             if conf.supybot.abuse.flood.command() \
-               and msgcount > maximum \
-               and not ircdb.checkCapability(msg.prefix, 'trusted') and not ircdb.checkCapability(msg.prefix, 'admin'):
+               and self.commands.len(msg) > maximum \
+               and not ircdb.checkCapability(msg.prefix, 'trusted'):
                 punishment = conf.supybot.abuse.flood.command.punishment()
                 banmask = ircutils.banmask(msg.prefix)
                 self.log.info('Ignoring %s for %s seconds due to an apparent '
                               'command flood.', banmask, punishment)
                 ircdb.ignores.add(banmask, time.time() + punishment)
-                irc.reply('You\'ve given me %s channel commands within the last '
-                          'minute; I\'m now ignoring you for %s. In the future, you should PM the commands to me instead of sending them in the channel.' %
+                irc.reply('You\'ve given me %s commands within the last '
+                          '%i seconds; I\'m now ignoring you for %s.' %
                           (maximum,
-                           utils.timeElapsed(punishment, seconds=False)), private=True)
+                           conf.supybot.abuse.flood.interval(),
+                           utils.timeElapsed(punishment, seconds=False)))
                 return
             try:
                 tokens = callbacks.tokenize(s, channel=msg.args[0])
                 self.Proxy(irc, msg, tokens)
-            except SyntaxError, e:
+            except SyntaxError as e:
                 irc.queueMsg(callbacks.error(msg, str(e)))
 
     def logmark(self, irc, msg, args, text):
@@ -343,7 +340,7 @@ class Owner(callbacks.Plugin):
         """
         try:
             m = ircmsgs.IrcMsg(s)
-        except Exception, e:
+        except Exception as e:
             irc.error(utils.exnToString(e))
         else:
             irc.queueMsg(m)
@@ -387,8 +384,8 @@ class Owner(callbacks.Plugin):
         L = []
         if level == 'high':
             L.append(format('Regexp cache flushed: %n cleared.',
-                            (len(sre._cache), 'regexp')))
-            sre.purge()
+                            (len(re._cache), 'regexp')))
+            re.purge()
             L.append(format('Pattern cache flushed: %n cleared.',
                             (len(ircutils._patternCache), 'compiled pattern')))
             ircutils._patternCache.clear()
@@ -438,8 +435,8 @@ class Owner(callbacks.Plugin):
             irc.error('%s is deprecated.  Use --deprecated '
                       'to force it to load.' % name.capitalize())
             return
-        except ImportError, e:
-            if str(e).endswith(' ' + name):
+        except ImportError as e:
+            if str(e).endswith(name):
                 irc.error('No plugin named %s exists.' % utils.str.dqrepr(name))
             else:
                 irc.error(str(e))
