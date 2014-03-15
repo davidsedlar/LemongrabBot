@@ -60,6 +60,9 @@ conf.registerChannelValue(RSS, 'announcementPrefix',
     registry.StringWithSpaceOnRight(_('New news from '), _("""Determines what
     prefix is prepended (if any) to the new news item announcements made in the
     channel.""")))
+conf.registerChannelValue(RSS, 'announcementSeparator',
+        registry.StringWithSpaceOnRight(_(': '), _("""Determines what
+    suffix is appended to the feed name in a news item.""")))
 conf.registerChannelValue(RSS, 'announce',
     registry.SpaceSeparatedSetOfStrings([], _("""Determines which RSS feeds
     should be announced in the channel; valid input is a list of strings
@@ -72,6 +75,10 @@ conf.registerGlobalValue(RSS, 'sortFeedItems',
     FeedItemSortOrder('asInFeed', _("""Determines whether feed items should be
     sorted by their update timestamp or kept in the same order as they appear
     in a feed.""")))
+conf.registerGlobalValue(RSS, 'stripRedirect', registry.Boolean(
+    True, """Determines whether the bot will attempt to strip url redirection
+    from headline links, by taking things after the last http://."""))
+
 conf.registerGlobalValue(RSS, 'feeds',
     FeedNames([], _("""Determines what feeds should be accessible as
     commands.""")))
@@ -80,6 +87,12 @@ conf.registerChannelValue(RSS, 'showLinks',
     along with the title of the feed when the rss command is called.
     supybot.plugins.RSS.announce.showLinks affects whether links will be
     listed when a feed is automatically announced.""")))
+conf.registerChannelValue(RSS, 'showPubDate',
+    registry.Boolean(False, """Determines whether the bot will list the 
+    publication datetime stamp along with the title of the feed when the rss
+    command is called.
+    supybot.plugins.RSS.announce.showPubDate affects whether this will be
+    listed when a feed is automatically announced."""))
 conf.registerGlobalValue(RSS, 'defaultNumberOfHeadlines',
     registry.PositiveInteger(1, _("""Indicates how many headlines an rss feed
     will output by default, if no number is provided.""")))
@@ -101,6 +114,13 @@ conf.registerChannelValue(RSS.announce, 'showLinks',
     along with the title of the feed when a feed is automatically
     announced.""")))
 
+conf.registerChannelValue(RSS.announce, 'showPubDate',
+    registry.Boolean(False, """Determines whether the bot will list the 
+    publication datetime stamp along with the title of the feed when a feed
+    is automatically announced."""))
+conf.registerGlobalValue(RSS.announce, 'cachePeriod',
+    registry.PositiveInteger(604800, """Maximum age of cached RSS headlines,
+    in seconds. Headline cache is used to avoid re-announcing old news."""))
 
 
 # vim:set shiftwidth=4 softtabstop=4 expandtab textwidth=79:

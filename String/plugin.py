@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2003-2005, Jeremiah Fincher
-# Copyright (c) 2008-2009, James Vega
+# Copyright (c) 2008-2009, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -38,6 +38,7 @@ import supybot.utils as utils
 from supybot.commands import *
 import supybot.commands as commands
 import supybot.plugins as plugins
+import supybot.commands as commands
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
 from supybot.i18n import PluginInternationalization, internationalizeDocstring
@@ -156,7 +157,7 @@ class String(callbacks.Plugin):
                       'it with some smaller inputs.'))
         else:
             irc.reply(str(utils.str.distance(s1, s2)))
-    levenshtein = wrap(levenshtein, ['something', 'text'])
+    levenshtein = thread(wrap(levenshtein, ['something', 'text']))
 
     @internationalizeDocstring
     def soundex(self, irc, msg, args, text, length):
@@ -164,8 +165,11 @@ class String(callbacks.Plugin):
 
         Returns the Soundex hash to a given length.  The length defaults to
         4, since that's the standard length for a soundex hash.  For unlimited
-        length, use 0.
+        length, use 0. Maximum length 1024.
         """
+        if length > 1024:
+            irc.error("Maximum allowed length is 1024.")
+            return
         irc.reply(utils.str.soundex(text, length))
     soundex = wrap(soundex, ['somethingWithoutSpaces', additional('int', 4)])
 
@@ -197,14 +201,13 @@ class String(callbacks.Plugin):
         else:
             t = self.registryValue('re.timeout')
             try:
-                v = commands.process(f, text, timeout=t, pn=self.name(), cn='re')
+                v = process(f, text, timeout=t, pn=self.name(), cn='re')
                 irc.reply(v)
-            except commands.ProcessTimeoutError, e:
+            except commands.ProcessTimeoutError as e:
                 irc.error("ProcessTimeoutError: %s" % (e,))
     re = thread(wrap(re, [first('regexpMatcher', 'regexpReplacer'),
                    'text']))
 
-    @internationalizeDocstring
     def xor(self, irc, msg, args, password, text):
         """<password> <text>
 
@@ -213,7 +216,7 @@ class String(callbacks.Plugin):
         encryption.
         """
         chars = utils.iter.cycle(password)
-        ret = [chr(ord(c) ^ ord(chars.next())) for c in text]
+        ret = [chr(ord(c) ^ ord(next(chars))) for c in text]
         irc.reply(''.join(ret))
     xor = wrap(xor, ['something', 'text'])
 
@@ -225,7 +228,7 @@ class String(callbacks.Plugin):
         http://www.rsasecurity.com/rsalabs/faq/3-6-6.html for more information
         about md5.
         """
-        irc.reply(utils.crypt.md5(text).hexdigest())
+        irc.reply(utils.crypt.md5(text.encode('utf8')).hexdigest())
     md5 = wrap(md5, ['text'])
 
     @internationalizeDocstring
@@ -236,7 +239,7 @@ class String(callbacks.Plugin):
         http://www.secure-hash-algorithm-md5-sha-1.co.uk/ for more information
         about SHA.
         """
-        irc.reply(utils.crypt.sha(text).hexdigest())
+        irc.reply(utils.crypt.sha(text.encode('utf8')).hexdigest())
     sha = wrap(sha, ['text'])
 
 Class = String

@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2005, Jeremiah Fincher
-# Copyright (c) 2009-2010, James Vega
+# Copyright (c) 2009-2010, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -42,7 +42,7 @@ def configure(advanced):
         conf.supybot.plugins.ShrinkUrl.shrinkSnarfer.setValue(True)
 
 class ShrinkService(registry.OnlySomeStrings):
-    """Valid values include 'ln', 'tiny', 'xrl', 'goo', and 'x0'."""
+    """Valid values include 'ln', 'tiny', 'xrl', 'goo', 'ur1', and 'x0'."""
     validStrings = ('ln', 'tiny', 'xrl', 'goo', 'ur1', 'x0')
 
 class ShrinkCycle(registry.SpaceSeparatedListOfStrings):
@@ -54,7 +54,7 @@ class ShrinkCycle(registry.SpaceSeparatedListOfStrings):
         self.lastIndex = -1
 
     def setValue(self, v):
-        super(ShrinkCycle, self).setValue(v)
+        super(self.__class__, self).setValue(v)
         self.lastIndex = -1
 
     def getService(self):
@@ -62,9 +62,8 @@ class ShrinkCycle(registry.SpaceSeparatedListOfStrings):
         if L:
             self.lastIndex = (self.lastIndex + 1) % len(L)
             return L[self.lastIndex]
-        raise ValueError, \
-                'No services have been configured for rotation.  ' \
-                'See conf.supybot.plugins.ShrinkUrl.serviceRotation.'
+        raise ValueError('No services have been configured for rotation.  ' \
+                'See conf.supybot.plugins.ShrinkUrl.serviceRotation.')
 
 ShrinkUrl = conf.registerPlugin('ShrinkUrl')
 conf.registerChannelValue(ShrinkUrl, 'shrinkSnarfer',

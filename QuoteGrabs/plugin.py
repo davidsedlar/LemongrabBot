@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2004, Daniel DiPaolo
-# Copyright (c) 2008-2010, James Vega
+# Copyright (c) 2008-2010, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -43,10 +43,7 @@ import supybot.callbacks as callbacks
 from supybot.i18n import PluginInternationalization, internationalizeDocstring
 _ = PluginInternationalization('QuoteGrabs')
 
-try:
-    import sqlite3
-except ImportError:
-    from pysqlite2 import dbapi2 as sqlite3 # for python2.4
+import sqlite3
 
 import traceback
 

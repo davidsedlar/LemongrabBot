@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2002-2004, Jeremiah Fincher
-# Copyright (c) 2010-2011, James Vega
+# Copyright (c) 2010-2011, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,7 @@
 ###
 
 import re
+import sys
 import time
 
 import supybot.log as log
@@ -202,9 +203,14 @@ class Seen(callbacks.Plugin):
             if len(results) == 1:
                 (nick, info) = results[0]
                 (when, said) = info
-                irc.reply(format(_('%s was last seen in %s %s ago: %s'),
+                reply = format(_('%s was last seen in %s %s ago'),
                                  nick, channel,
-                                 utils.timeElapsed(time.time()-when), said))
+                                 utils.timeElapsed(time.time()-when))
+                if self.registryValue('showLastMessage', channel):
+                    if sys.version_info[0] < 3:
+                        said = said.decode('utf8')
+                    reply = _('%s: %s') % (reply, said)
+                irc.reply(reply)
             elif len(results) > 1:
                 L = []
                 for (nick, info) in results:
@@ -257,7 +263,7 @@ class Seen(callbacks.Plugin):
         else:
             self._last(irc, channel, any=True)
     any = wrap(any, ['channel', getopts({'user': 'otherUser'}),
-                     additional('nick')])
+                     additional('something')])
 
     def _last(self, irc, channel, any=False):
         if any:
@@ -266,9 +272,11 @@ class Seen(callbacks.Plugin):
             db = self.db
         try:
             (when, said) = db.seen(channel, '<last>')
-            irc.reply(format(_('Someone was last seen in %s %s ago: %s'),
-                             channel, utils.timeElapsed(time.time()-when),
-                             said))
+            reply = format(_('Someone was last seen in %s %s ago'),
+                             channel, utils.timeElapsed(time.time()-when))
+            if self.registryValue('showLastMessage', channel):
+                reply = _('%s: %s') % (reply, said)
+            irc.reply(reply)
         except KeyError:
             irc.reply(_('I have never seen anyone.'))
 
@@ -292,9 +300,12 @@ class Seen(callbacks.Plugin):
             db = self.db
         try:
             (when, said) = db.seen(channel, user.id)
-            irc.reply(format(_('%s was last seen in %s %s ago: %s'),
+            reply = format(_('%s was last seen in %s %s ago'),
                              user.name, channel,
-                             utils.timeElapsed(time.time()-when), said))
+                             utils.timeElapsed(time.time()-when))
+            if self.registryValue('showLastMessage', channel):
+                reply = _('%s: %s') % (reply, said)
+            irc.reply(reply)
         except KeyError:
             irc.reply(format(_('I have not seen %s.'), user.name))
 
@@ -316,9 +327,11 @@ class Seen(callbacks.Plugin):
 
     @internationalizeDocstring
     def since(self, irc, msg, args, channel,  nick):
-        """[<channel>] <nick>
+        """[<channel>] [<nick>]
 
         Returns the messages since <nick> last left the channel.
+        If <nick> is not given, it defaults to the nickname of the person
+        calling the command.
         """
         if nick is None:
             nick = msg.nick
@@ -350,13 +363,13 @@ class Seen(callbacks.Plugin):
                 break
         else: # I never use this; it only kicks in when the for loop exited normally.
             irc.error(format(_('I couldn\'t find in my history of %s messages '
-                             'where %r last left the %s'),
+                             'where %r last left %s'),
                              len(irc.state.history), nick, channel))
             return
         msgs = [m for m in irc.state.history[i:end]
                 if m.command == 'PRIVMSG' and ircutils.strEqual(m.args[0], channel)]
         if msgs:
-            irc.reply(format('%L', map(ircmsgs.prettyPrint, msgs)))
+            irc.reply(format('%L', list(map(ircmsgs.prettyPrint, msgs))))
         else:
             irc.reply(format(_('Either %s didn\'t leave, '
                              'or no messages were sent while %s was gone.'), nick, nick))

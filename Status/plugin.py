@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2002-2005, Jeremiah Fincher
-# Copyright (c) 2009, James Vega
+# Copyright (c) 2009, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,7 @@ import os
 import sys
 import time
 import threading
+import multiprocessing
 import subprocess
 
 import supybot.conf as conf
@@ -98,7 +99,21 @@ class Status(callbacks.Plugin):
         irc.reply(s)
     threads = wrap(threads)
 
-    @internationalizeDocstring
+    def processes(self, irc, msg, args):
+        """takes no arguments
+
+        Returns the number of processes that have been spawned, and list of
+        ones that are still active.
+        """
+        ps = [multiprocessing.current_process().name]
+        ps = ps + [p.name for p in multiprocessing.active_children()]
+        s = format('I have spawned %n; %n %b still currently active: %L.',
+                   (world.processesSpawned, 'process'),
+                   (len(ps), 'process'),
+                   len(ps), ps)
+        irc.reply(s)
+    processes = wrap(processes)
+
     def net(self, irc, msg, args):
         """takes no arguments
 

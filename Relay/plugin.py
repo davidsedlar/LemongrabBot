@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2002-2004, Jeremiah Fincher
-# Copyright (c) 2010, James Vega
+# Copyright (c) 2010, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -171,8 +171,8 @@ class Relay(callbacks.Plugin):
                 utils.sortBy(ircutils.toLower, voices)
                 utils.sortBy(ircutils.toLower, halfops)
                 utils.sortBy(ircutils.toLower, usersS)
-                usersS = ', '.join(filter(None, map(', '.join,
-                                  (ops,halfops,voices,usersS))))
+                usersS = ', '.join(filter(None, list(map(', '.join,
+                                  (ops,halfops,voices,usersS)))))
                 users.append(format('%s (%i): %s',
                                     ircutils.bold(network), numUsers, usersS))
         users.sort()

@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2002-2004, Jeremiah Fincher
-# Copyright (c) 2010, James Vega
+# Copyright (c) 2010, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -264,6 +264,10 @@ class Services(callbacks.Plugin):
                              on)
         elif 'inviting' in s:
             self.log.debug('Got "Inviting to channel" from ChanServ %s.', on)
+        elif s.startswith('['):
+            chanTypes = irc.state.supported['CHANTYPES']
+            if re.match(r'^\[[%s]' % re.escape(chanTypes), s):
+                self.log.debug('Got entrymsg from ChanServ %s.', on)
         else:
             self.log.warning('Got unexpected notice from ChanServ %s: %r.',
                              on, msg)

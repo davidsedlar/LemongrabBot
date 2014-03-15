@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2003-2005, Jeremiah Fincher
-# Copyright (c) 2009, James Vega
+# Copyright (c) 2009, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -97,6 +97,10 @@ class StringTestCase(PluginTestCase):
         for c in map(chr, range(256)):
             i = ord(c)
             self.assertResponse('ord %s' % utils.str.dqrepr(c), str(i))
+
+    def testMd5(self):
+        self.assertResponse('md5 supybot', '1360578d1276e945cc235654a53f9c65')
+
 
     def testEncodeDecode(self):
         # This no longer works correctly.  It almost seems like were throwing

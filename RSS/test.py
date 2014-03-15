@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2002-2004, Jeremiah Fincher
-# Copyright (c) 2009, James Vega
+# Copyright (c) 2009, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -77,7 +77,6 @@ class RSSTestCase(ChannelPluginTestCase):
 
         def testNonAsciiFeeds(self):
             self.assertNotError('rss http://www.heise.de/newsticker/heise.rdf')
-            self.assertNotError('rss http://www.golem.de/rss.php?feed=ATOM0.3')
             self.assertNotError('rss info http://br-linux.org/main/index.xml')
 
 

@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2003-2005, Daniel DiPaolo
-# Copyright (c) 2010, James Vega
+# Copyright (c) 2010, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -238,9 +238,10 @@ class Todo(callbacks.Plugin):
         criteria = []
         for (option, arg) in optlist:
             if option == 'regexp':
-                criteria.append(lambda x: commands.regexp_wrapper(x, reobj=arg, 
-                        timeout=0.1, plugin_name = self.name(), fcn_name='search'))
-                criteria.append(arg.search)
+                criteria.append(lambda s:
+                                regexp_wrapper(s, reobj=arg, timeout=0.1,
+                                               plugin_name=self.name(),
+                                               fcn_name='search'))
         for glob in globs:
             glob = utils.python.glob2re(glob)
             criteria.append(re.compile(glob).search)

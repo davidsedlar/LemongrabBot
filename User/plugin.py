@@ -28,9 +28,13 @@
 ###
 
 import re
+import sys
+import uuid
+import time
 import fnmatch
 
 import supybot.conf as conf
+import supybot.gpg as gpg
 import supybot.utils as utils
 import supybot.ircdb as ircdb
 from supybot.commands import *
@@ -42,7 +46,7 @@ _ = PluginInternationalization('User')
 class User(callbacks.Plugin):
     def _checkNotChannel(self, irc, msg, password=' '):
         if password and irc.isChannel(msg.args[0]):
-            raise callbacks.Error, conf.supybot.replies.requiresPrivacy()
+            raise callbacks.Error(conf.supybot.replies.requiresPrivacy())
 
     @internationalizeDocstring
     def list(self, irc, msg, args, optlist, glob):
@@ -54,15 +58,15 @@ class User(callbacks.Plugin):
         predicates = []
         for (option, arg) in optlist:
             if option == 'capability':
-                try:
-                    u = ircdb.users.getUser(msg.prefix)
-                    if arg in conf.supybot.capabilities.private() and \
-                            not u._checkCapability('admin'):
-                        raise KeyError
-                except KeyError:
-                    # Note that it may be raised by checkCapability too.
-                    irc.error(_('This is a private capability. Only admins '
-                        'can see who has it.'), Raise=True)
+                if arg in conf.supybot.capabilities.private():
+                    try:
+                        u = ircdb.users.getUser(msg.prefix)
+                        if not u._checkCapability('admin'):
+                            raise KeyError
+                    except KeyError:
+                        # Note that it may be raised by checkCapability too.
+                        irc.error(_('This is a private capability. Only admins '
+                            'can see who has it.'), Raise=True)
                 def p(u, cap=arg):
                     try:
                         return u._checkCapability(cap)
@@ -277,7 +281,7 @@ class User(callbacks.Plugin):
             command.
             """
             def getHostmasks(user):
-                hostmasks = map(repr, user.hostmasks)
+                hostmasks = list(map(repr, user.hostmasks))
                 if hostmasks:
                     hostmasks.sort()
                     return format('%L', hostmasks)
@@ -346,11 +350,11 @@ class User(callbacks.Plugin):
                               Raise=True)
             try:
                 user.addHostmask(hostmask)
-            except ValueError, e:
+            except ValueError as e:
                 irc.error(str(e), Raise=True)
             try:
                 ircdb.users.setUser(user)
-            except ValueError, e:
+            except ValueError as e:
                 irc.error(str(e), Raise=True)
             except ircdb.DuplicateHostmask:
                 irc.error(_('That hostmask is already registered.'),
@@ -361,15 +365,22 @@ class User(callbacks.Plugin):
 
         @internationalizeDocstring
         def remove(self, irc, msg, args, user, hostmask, password):
-            """<name> <hostmask> [<password>]
+            """[<name>] [<hostmask>] [<password>]
 
             Removes the hostmask <hostmask> from the record of the user
             specified by <name>.  If the hostmask given is 'all' then all
             hostmasks will be removed.  The <password> may only be required if
-            the user is not recognized by his hostmask.  This message must be
+            the user is not recognized by their hostmask.  This message must be
             sent to the bot privately (not on a channel) since it may contain a
-            password.
+            password.  If <hostmask> is
+            not given, it defaults to your current hostmask.  If <name> is not
+            given, it defaults to your currently identified name.  This message
+            must be sent to the bot privately (not on a channel) since it may
+            contain a password.
+
             """
+            if not hostmask:
+                hostmask = msg.prefix
             if not user.checkPassword(password) and \
                not user.checkHostmask(msg.prefix):
                 u = ircdb.users.getUser(msg.prefix)
@@ -388,8 +399,129 @@ class User(callbacks.Plugin):
                 return
             ircdb.users.setUser(user)
             irc.replySuccess(s)
-        remove = wrap(remove, ['private', 'otherUser', 'something',
-                               additional('something', '')])
+        remove = wrap(remove, ['private', first('otherUser', 'user'),
+                               optional('something'), additional('something', '')])
+
+    class gpg(callbacks.Commands):
+        def __init__(self, *args):
+            super(User.gpg, self).__init__(*args)
+            self._tokens = {}
+
+        def callCommand(self, command, irc, msg, *args, **kwargs):
+            if gpg.available and self.registryValue('gpg.enable'):
+                return super(User.gpg, self) \
+                        .callCommand(command, irc, msg, *args, **kwargs)
+            else:
+                irc.error(_('GPG features are not enabled.'))
+
+        def _expire_tokens(self):
+            now = time.time()
+            self._tokens = dict(filter(lambda x_y: x_y[1][1]>now,
+                self._tokens.items()))
+
+        @internationalizeDocstring
+        def add(self, irc, msg, args, user, keyid, keyserver):
+            """<key id> <key server>
+
+            Add a GPG key to your account."""
+            if keyid in user.gpgkeys:
+                irc.error(_('This key is already associated with your '
+                    'account.'))
+                return
+            result = gpg.keyring.recv_keys(keyserver, keyid)
+            reply = format(_('%n imported, %i unchanged, %i not imported.'),
+                    (result.imported, _('key')),
+                    result.unchanged,
+                    result.not_imported,
+                    [x['fingerprint'] for x in result.results])
+            if result.imported == 1:
+                user.gpgkeys.append(keyid)
+                irc.reply(reply)
+            else:
+                irc.error(reply)
+        add = wrap(add, ['user',
+                         ('somethingWithoutSpaces',
+                             _('You must give a valid key id')),
+                         ('somethingWithoutSpaces',
+                             _('You must give a valid key server'))])
+
+        @internationalizeDocstring
+        def remove(self, irc, msg, args, user, fingerprint):
+            """<fingerprint>
+
+            Remove a GPG key from your account."""
+            try:
+                keyids = [x['keyid'] for x in gpg.keyring.list_keys()
+                        if x['fingerprint'] == fingerprint]
+                if len(keyids) == 0:
+                    raise ValueError
+                for keyid in keyids:
+                    user.gpgkeys.remove(keyid)
+                gpg.keyring.delete_keys(fingerprint)
+                irc.replySuccess()
+            except ValueError:
+                irc.error(_('GPG key not associated with your account.'))
+        remove = wrap(remove, ['user', 'somethingWithoutSpaces'])
+
+        @internationalizeDocstring
+        def gettoken(self, irc, msg, args):
+            """takes no arguments
+
+            Send you a token that you'll have to sign with your key."""
+            self._expire_tokens()
+            token = '{%s}' % str(uuid.uuid4())
+            lifetime = conf.supybot.plugins.User.gpg.TokenTimeout()
+            self._tokens.update({token: (msg.prefix, time.time()+lifetime)})
+            irc.reply(_('Your token is: %s. Please sign it with your '
+                'GPG key, paste it somewhere, and call the \'auth\' '
+                'command with the URL to the (raw) file containing the '
+                'signature.') % token)
+        gettoken = wrap(gettoken, [])
+
+        _auth_re = re.compile(r'-----BEGIN PGP SIGNED MESSAGE-----\r?\n'
+                r'Hash: .*\r?\n\r?\n'
+                r'\s*({[0-9a-z-]+})\s*\r?\n'
+                r'-----BEGIN PGP SIGNATURE-----\r?\n.*'
+                r'\r?\n-----END PGP SIGNATURE-----',
+                re.S)
+        @internationalizeDocstring
+        def auth(self, irc, msg, args, url):
+            """<url>
+
+            Check the GPG signature at the <url> and authenticates you if
+            the key used is associated to a user."""
+            self._expire_tokens()
+            content = utils.web.getUrl(url)
+            if sys.version_info[0] >= 3 and isinstance(content, bytes):
+                content = content.decode()
+            match = self._auth_re.search(content)
+            if not match:
+                irc.error(_('Signature or token not found.'), Raise=True)
+            data = match.group(0)
+            token = match.group(1)
+            if token not in self._tokens:
+                irc.error(_('Unknown token. It may have expired before you '
+                    'submit it.'), Raise=True)
+            if self._tokens[token][0] != msg.prefix:
+                irc.error(_('Your hostname/nick changed in the process. '
+                    'Authentication aborted.'))
+            verified = gpg.keyring.verify(data)
+            if verified and verified.valid:
+                keyid = verified.key_id
+                prefix, expiry = self._tokens.pop(token)
+                found = False
+                for (id, user) in ircdb.users.items():
+                    if keyid in [x[-len(keyid):] for x in user.gpgkeys]:
+                        user.addAuth(msg.prefix)
+                        ircdb.users.setUser(user, flush=False)
+                        irc.reply(_('You are now authenticated as %s.') %
+                                user.name)
+                        return
+                irc.error(_('Unknown GPG key.'), Raise=True)
+            else:
+                irc.error(_('Signature could not be verified. Make sure '
+                    'this is a valid GPG signature and the URL is valid.'))
+        auth = wrap(auth, ['url'])
 
     @internationalizeDocstring
     def capabilities(self, irc, msg, args, user):

@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2005, Jeremiah Fincher
-# Copyright (c) 2010, James Vega
+# Copyright (c) 2010, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -58,8 +58,7 @@ def configure(advanced):
 class ValidNickOrEmptyString(registry.String):
     def setValue(self, v):
         if v and not ircutils.isNick(v):
-            raise registry.InvalidRegistryValue, \
-                  'Value must be a valid nick or the empty string.'
+            raise registry.InvalidRegistryValue('Value must be a valid nick or the empty string.')
         registry.String.setValue(self, v)
 
 class ValidNickSet(conf.ValidNicks):
