@@ -151,7 +151,7 @@ class Admin(callbacks.Plugin):
         networkGroup.channels().add(channel)
         if key:
             networkGroup.channels.key.get(channel).setValue(key)
-        maxchannels = irc.state.supported.get('maxchannels', sys.maxint)
+        maxchannels = irc.state.supported.get('maxchannels', sys.maxsize)
         if len(irc.state.channels) + 1 > maxchannels:
             irc.error(_('I\'m already too close to maximum number of '
                       'channels for this network.'), Raise=True)
@@ -212,19 +212,21 @@ class Admin(callbacks.Plugin):
                 self.log.debug('Got NICK without Admin.nick being called.')
 
     @internationalizeDocstring
-    def nick(self, irc, msg, args, nick):
-        """[<nick>]
+    def nick(self, irc, msg, args, nick, network):
+        """[<nick>] [<network>]
 
         Changes the bot's nick to <nick>.  If no nick is given, returns the
         bot's current nick.
         """
+        network = network or irc.network
         if nick:
-            conf.supybot.nick.setValue(nick)
+            group = getattr(conf.supybot.networks, network)
+            group.nick.setValue(nick)
             irc.queueMsg(ircmsgs.nick(nick))
             self.pendingNickChanges[irc.getRealIrc()] = irc
         else:
             irc.reply(irc.nick)
-    nick = wrap(nick, [additional('nick')])
+    nick = wrap(nick, [additional('nick'), additional('something')])
 
     @internationalizeDocstring
     def part(self, irc, msg, args, channel, reason):
@@ -265,7 +267,7 @@ class Admin(callbacks.Plugin):
             """
             # Ok, the concepts that are important with capabilities:
             #
-            ### 1) No user should be able to elevate his privilege to owner.
+            ### 1) No user should be able to elevate their privilege to owner.
             ### 2) Admin users are *not* superior to #channel.ops, and don't
             ###    have God-like powers over channels.
             ### 3) We assume that Admin users are two things: non-malicious and
@@ -349,10 +351,19 @@ class Admin(callbacks.Plugin):
             """
             # XXX Add the expirations.
             if ircdb.ignores.hostmasks:
-                irc.reply(format('%L', (map(repr,ircdb.ignores.hostmasks))))
+                irc.reply(format('%L', (list(map(repr,ircdb.ignores.hostmasks)))))
             else:
                 irc.reply(_('I\'m not currently globally ignoring anyone.'))
         list = wrap(list)
+
+    def clearq(self, irc, msg, args):
+        """takes no arguments
+
+        Clears the current send queue for this network.
+        """
+        irc.queue.reset()
+        irc.replySuccess()
+    clearq = wrap(clearq)
 
 
     @internationalizeDocstring

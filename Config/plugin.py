@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2002-2005, Jeremiah Fincher
-# Copyright (c) 2009, James Vega
+# Copyright (c) 2009, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -51,7 +51,7 @@ _ = PluginInternationalization('Config')
 def getWrapper(name):
     parts = registry.split(name)
     if not parts or parts[0] not in ('supybot', 'users'):
-        raise InvalidRegistryName, name
+        raise InvalidRegistryName(name)
     group = getattr(conf, parts.pop(0))
     while parts:
         try:
@@ -60,7 +60,7 @@ def getWrapper(name):
         # that we have a useful error message for the user.
         except (registry.NonExistentRegistryEntry,
                 registry.InvalidRegistryName):
-            raise registry.InvalidRegistryName, name
+            raise registry.InvalidRegistryName(name)
     return group
 
 def getCapability(name):
@@ -99,7 +99,7 @@ def getConfigVar(irc, msg, args, state):
         group = getWrapper(name)
         state.args.append(group)
         del args[0]
-    except registry.InvalidRegistryName, e:
+    except registry.InvalidRegistryName as e:
         state.errorInvalid(_('configuration variable'), str(e))
 addConverter('configVar', getConfigVar)
 
@@ -114,7 +114,7 @@ class Config(callbacks.Plugin):
     def callCommand(self, command, irc, msg, *args, **kwargs):
         try:
             super(Config, self).callCommand(command, irc, msg, *args, **kwargs)
-        except registry.InvalidRegistryValue, e:
+        except registry.InvalidRegistryValue as e:
             irc.error(str(e))
 
     def _list(self, group):
@@ -284,6 +284,15 @@ class Config(callbacks.Plugin):
         irc.replySuccess()
     export = wrap(export, [('checkCapability', 'owner'), 'filename'])
 
+    @internationalizeDocstring
+    def setdefault(self, irc, msg, args, group):
+        """<name>
+
+        Resets the configuration variable <name> to its default value.
+        """
+        v = str(group.__class__(group._default, ''))
+        self._setValue(irc, msg, group, v)
+    setdefault = wrap(setdefault, ['settableConfigVar'])
 
 Class = Config
 

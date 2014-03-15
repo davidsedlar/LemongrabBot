@@ -30,10 +30,7 @@
 
 from supybot.test import *
 
-try:
-    import sqlite3
-except ImportError:
-    from pysqlite2 import dbapi2 as sqlite3 # for python2.4
+import sqlite3
 
 
 class MessageParserTestCase(ChannelPluginTestCase):
@@ -90,6 +87,22 @@ class MessageParserTestCase(ChannelPluginTestCase):
         m = self.getMsg(' ')
         self.failUnless(str(m).startswith('PRIVMSG #test :i saw some stuff'))
     
+    def testMaxTriggers(self):
+        self.assertNotError('messageparser add "stuff" "echo i saw some stuff"')
+        self.assertNotError('messageparser add "sbd" "echo i saw somebody"')
+        self.feedMsg('this message issued by sbd has some stuff in it')
+        m = self.getMsg(' ')
+        self.failUnless(str(m).startswith('PRIVMSG #test :i saw some'))
+        m = self.getMsg(' ')
+        self.failUnless(str(m).startswith('PRIVMSG #test :i saw some'))
+
+        with conf.supybot.plugins.messageparser.maxtriggers.context(1):
+            self.feedMsg('this message issued by sbd has some stuff in it')
+            m = self.getMsg(' ')
+            self.failUnless(str(m).startswith('PRIVMSG #test :i saw some'))
+            m = self.getMsg(' ')
+            self.failIf(m)
+
     def testLock(self):
         self.assertNotError('messageparser add "stuff" "echo i saw some stuff"')
         self.assertNotError('messageparser lock "stuff"')

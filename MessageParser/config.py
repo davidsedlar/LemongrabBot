@@ -57,6 +57,9 @@ conf.registerChannelValue(MessageParser, 'enable',
     registry.Boolean(True, _("""Determines whether the
     message parser is enabled.  If enabled, will trigger on regexps
     added to the regexp db.""")))
+conf.registerChannelValue(MessageParser, 'enableForNotices',
+    registry.Boolean(False, _("""Determines whether the message parser
+    is enabled for NOTICE messages too.""")))
 conf.registerChannelValue(MessageParser, 'keepRankInfo',
     registry.Boolean(True, _("""Determines whether we keep updating the usage
     count for each regexp, for popularity ranking.""")))
@@ -76,5 +79,8 @@ conf.registerChannelValue(MessageParser, 'requireManageCapability',
 conf.registerChannelValue(MessageParser, 'listSeparator',
     registry.String(', ', _("""Determines the separator used between regexps when
     shown by the list command.""")))
+conf.registerChannelValue(MessageParser, 'maxTriggers',
+    registry.Integer(0, _("""Determines the maximum number of triggers in
+    one message. Set this to 0 to allow an infinite number of triggers.""")))
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:

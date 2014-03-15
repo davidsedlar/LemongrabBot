@@ -46,19 +46,12 @@ except:
     _ = lambda x:x
     internationalizeDocstring = lambda x:x
 
-# builtin any is overwritten by callbacks... and python2.4 doesn't have it
-def _any(iterable):
-    for element in iterable:
-        if element:
-            return True
-    return False
-# for consistency with above, and for python2.4
-def _all(iterable):
-    for element in iterable:
-        if not element:
-            return False
-    return True
-
+if isinstance(__builtins__, dict):
+    _any = __builtins__['any']
+    _all = __builtins__['all']
+else:
+    _any = __builtins__.any
+    _all = __builtins__.all
 
 class Conditional(callbacks.Plugin):
     """Add the help for "@plugin help Conditional" here
@@ -72,8 +65,8 @@ class Conditional(callbacks.Plugin):
         tokens = callbacks.tokenize(command)
         try:
             self.Proxy(irc.irc, msg, tokens)
-        except Exception, e:
-            log.exception('Uncaught exception in requested function:')
+        except Exception as e:
+            self.log.exception('Uncaught exception in requested function:')
 
     @internationalizeDocstring
     def cif(self, irc, msg, args, condition, ifcommand, elsecommand):
@@ -207,17 +200,24 @@ class Conditional(callbacks.Plugin):
     le = wrap(le, ['anything', 'anything'])
 
     @internationalizeDocstring
-    def match(self, irc, msg, args, item1, item2):
-        """<item1> <item2>
+    def match(self, irc, msg, args, optlist, item1, item2):
+        """[--case-insensitive] <item1> <item2>
 
         Determines if <item1> is a substring of <item2>.
         Returns true if <item1> is contained in <item2>.
+
+        Will only match case if --case-insensitive is not given.
         """
+        optlist = dict(optlist)
+        if 'case-insensitive' in optlist:
+            item1 = item1.lower()
+            item2 = item2.lower()
         if item2.find(item1) != -1:
             irc.reply('true')
         else:
             irc.reply('false')
-    match = wrap(match, ['something', 'something'])
+    match = wrap(match, [getopts({'case-insensitive': ''}),
+                         'something', 'something'])
 
     @internationalizeDocstring
     def nceq(self, irc, msg, args, item1, item2):

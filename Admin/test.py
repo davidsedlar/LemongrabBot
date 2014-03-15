@@ -36,6 +36,8 @@ class AdminTestCase(PluginTestCase):
             m = self.irc.takeMsg()
             self.assertEqual(m.command, 'MODE')
             m = self.irc.takeMsg()
+            self.assertEqual(m.command, 'MODE')
+            m = self.irc.takeMsg()
             self.assertEqual(m.command, 'WHO')
         self.assertRegexp('channels', 'not.*in any')
         self.irc.feedMsg(ircmsgs.join('#foo', prefix=self.prefix))
@@ -97,6 +99,8 @@ class AdminTestCase(PluginTestCase):
             m = self.irc.takeMsg()
             self.assertEqual(m.command, 'MODE')
             m = self.irc.takeMsg()
+            self.assertEqual(m.command, 'MODE')
+            m = self.irc.takeMsg()
             self.assertEqual(m.command, 'WHO')
         self.assertError('part #foo')
         self.assertRegexp('part #foo', 'not in')
@@ -118,7 +122,7 @@ class AdminTestCase(PluginTestCase):
             self.assertEqual(m.command, 'NICK')
             self.assertEqual(m.args[0], 'foobar')
         finally:
-            conf.supybot.nick.setValue(original)
+            conf.supybot.networks.test.nick.setValue('')
 
     def testAddCapabilityOwner(self):
         self.assertError('admin capability add %s owner' % self.nick)

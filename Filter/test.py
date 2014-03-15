@@ -1,3 +1,4 @@
+# -*- coding: utf8 -*-
 ###
 # Copyright (c) 2002-2005, Jeremiah Fincher
 # All rights reserved.
@@ -91,16 +92,21 @@ class FilterTest(ChannelPluginTestCase):
     def testUnbinary(self):
         self.assertResponse('unbinary 011011010110111101101111', 'moo')
 
+    def testUnbinary(self):
+        self.assertResponse('unbinary 011011010110111101101111', 'moo')
+        self.assertError('unbinary moo')
+
     def testRot13(self):
         for s in map(str, range(1000, 1010)):
             self.assertResponse('rot13 [rot13 %s]' % s, s)
 
     def testRot13HandlesNonAsciiStuff(self):
-        self.assertNotError('rot13 \xe4')
+        self.assertNotError(u'rot13 é')
 
     def testHexlifyUnhexlify(self):
         for s in map(str, range(1000, 1010)):
             self.assertResponse('unhexlify [hexlify %s]' % s, s)
+        self.assertNotError('unhexlify ff')
 
     def testScramble(self):
         s = 'the recalcitrant jamessan tests his scramble function'

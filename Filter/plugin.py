@@ -29,6 +29,7 @@
 ###
 
 import re
+import sys
 import codecs
 import string
 import random
@@ -164,19 +165,20 @@ class Filter(callbacks.Plugin):
         irc.reply(''.join(L))
     binary = wrap(binary, ['text'])
 
-    @internationalizeDocstring
     def unbinary(self, irc, msg, args, text):
         """<text>
 
         Returns the character representation of binary <text>.
         Assumes ASCII, 8 digits per character.
         """
-        L = [chr(int(text[i:(i+8)], 2)) for i in xrange(0, len(text), 8)]
-        irc.reply(''.join(L))
+        try:
+            L = [chr(int(text[i:(i+8)], 2)) for i in xrange(0, len(text), 8)]
+            irc.reply(''.join(L))
+        except ValueError:
+            irc.errorInvalid('binary string', text)
     unbinary = wrap(unbinary, ['text'])
 
     _hex_encoder = staticmethod(codecs.getencoder('hex_codec'))
-    @internationalizeDocstring
     def hexlify(self, irc, msg, args, text):
         """<text>
 
@@ -195,7 +197,8 @@ class Filter(callbacks.Plugin):
         <hexstring> must be a string of hexadecimal digits.
         """
         try:
-            irc.reply(self._hex_decoder(text.encode('utf8'))[0].decode('utf8'))
+            irc.reply(self._hex_decoder(text.encode('utf8'))[0]
+                    .decode('utf8', 'replace'))
         except TypeError:
             irc.error(_('Invalid input.'))
     unhexlify = wrap(unhexlify, ['text'])
@@ -209,6 +212,8 @@ class Filter(callbacks.Plugin):
         commonly used for text that simply needs to be hidden from inadvertent
         reading by roaming eyes, since it's easily reversible.
         """
+        if sys.version_info[0] < 3:
+            text = text.decode('utf8')
         irc.reply(self._rot13_encoder(text)[0])
     rot13 = wrap(rot13, ['text'])
 
@@ -236,8 +241,8 @@ class Filter(callbacks.Plugin):
         irc.reply(text)
     lithp = wrap(lithp, ['text'])
 
-    _leettrans = utils.str.MultipleReplacer(dict(zip('oOaAeElBTiIts',
-                                                     '004433187!1+5')))
+    _leettrans = utils.str.MultipleReplacer(dict(list(zip('oOaAeElBTiIts',
+                                                     '004433187!1+5'))))
     _leetres = [(re.compile(r'\b(?:(?:[yY][o0O][oO0uU])|u)\b'), 'j00'),
                 (re.compile(r'fear'), 'ph33r'),
                 (re.compile(r'[aA][tT][eE]'), '8'),
@@ -408,8 +413,12 @@ class Filter(callbacks.Plugin):
 
         Returns <text> colorized like a rainbow.
         """
+        if sys.version_info[0] < 3:
+            text = text.decode('utf-8')
         colors = utils.iter.cycle(['04', '07', '08', '03', '02', '12', '06'])
-        L = [self._color(c, fg=colors.next()) for c in text]
+        L = [self._color(c, fg=next(colors)) for c in text]
+        if sys.version_info[0] < 3:
+            L = [c.encode('utf-8') for c in L]
         irc.reply(''.join(L) + '\x03')
     rainbow = wrap(rainbow, ['text'])
 
@@ -653,7 +662,7 @@ class Filter(callbacks.Plugin):
         irc.reply(text)
     shrink = wrap(shrink, ['text'])
 
-    _azn_trans = utils.str.MultipleReplacer(dict(zip('rlRL', 'lrLR')))
+    _azn_trans = utils.str.MultipleReplacer(dict(list(zip('rlRL', 'lrLR'))))
     @internationalizeDocstring
     def azn(self, irc, msg, args, text):
         """<text>
@@ -726,7 +735,7 @@ class Filter(callbacks.Plugin):
             elif ord(c) >= 32:
                 turned.insert(0, c)
                 tlen += 1
-        s = '%s \x02 \x02' % ''.join(map(lambda x: x.encode('utf-8'), turned))
+        s = '%s \x02 \x02' % ''.join(turned)
         irc.reply(s)
     uniud = wrap(uniud, ['text'])
 Filter = internationalizeDocstring(Filter)

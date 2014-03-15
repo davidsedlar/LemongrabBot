@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2002-2004, Jeremiah Fincher
-# Copyright (c) 2009-2010, James Vega
+# Copyright (c) 2009-2010, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,7 @@
 ###
 
 import re
+import sys
 import types
 
 import supybot.conf as conf
@@ -56,13 +57,13 @@ def getChannel(msg, args=()):
                     'variable ' \
                     'supybot.reply.requireChannelCommandsToBeSentInChannel ' \
                     'to False.'
-                raise callbacks.Error, s
+                raise callbacks.Error(s)
         return args.pop(0)
     elif ircutils.isChannel(msg.args[0]):
         return msg.args[0]
     else:
-        raise callbacks.Error, 'Command must be sent in a channel or ' \
-                               'include a channel in its arguments.'
+        raise callbacks.Error('Command must be sent in a channel or ' \
+                               'include a channel in its arguments.')
 
 def getArgs(args, required=1, optional=0, wildcard=0):
     if len(args) < required:
@@ -86,7 +87,7 @@ class RecursiveAlias(AliasError):
 dollarRe = re.compile(r'\$(\d+)')
 def findBiggestDollar(alias):
     dollars = dollarRe.findall(alias)
-    dollars = map(int, dollars)
+    dollars = list(map(int, dollars))
     dollars.sort()
     if dollars:
         return dollars[-1]
@@ -96,7 +97,7 @@ def findBiggestDollar(alias):
 atRe = re.compile(r'@(\d+)')
 def findBiggestAt(alias):
     ats = atRe.findall(alias)
-    ats = map(int, ats)
+    ats = list(map(int, ats))
     ats.sort()
     if ats:
         return ats[-1]
@@ -162,12 +163,12 @@ def makeNewAlias(name, alias):
     biggestAt = findBiggestAt(original)
     wildcard = '$*' in original
     if biggestAt and wildcard:
-        raise AliasError, 'Can\'t mix $* and optional args (@1, etc.)'
+        raise AliasError('Can\'t mix $* and optional args (@1, etc.)')
     if original.count('$*') > 1:
-        raise AliasError, 'There can be only one $* in an alias.'
+        raise AliasError('There can be only one $* in an alias.')
     testTokens = callbacks.tokenize(original)
     if testTokens and isinstance(testTokens[0], list):
-        raise AliasError, 'Commands may not be the result of nesting.'
+        raise AliasError('Commands may not be the result of nesting.')
     def f(self, irc, msg, args):
         alias = original.replace('$nick', msg.nick)
         if '$channel' in original:
@@ -177,6 +178,8 @@ def makeNewAlias(name, alias):
         if biggestDollar or biggestAt:
             args = getArgs(args, required=biggestDollar, optional=biggestAt,
                             wildcard=wildcard)
+        max_len = conf.supybot.reply.maximumLength()
+        args = list([x[:max_len] for x in args])
         def regexpReplace(m):
             idx = int(m.group(1))
             return args[idx-1]
@@ -211,12 +214,22 @@ def makeNewAlias(name, alias):
                         return True
                 return False
             everythingReplace(tokens)
-        self.Proxy(irc, msg, tokens)
+        maxNesting = conf.supybot.commands.nested.maximum()
+        if maxNesting and irc.nested+1 > maxNesting:
+            irc.error(_('You\'ve attempted more nesting than is '
+                  'currently allowed on this bot.'), Raise=True)
+        self.Proxy(irc, msg, tokens, nested=irc.nested+1)
     flexargs = ''
     if biggestDollar and (wildcard or biggestAt):
         flexargs = _(' at least')
-    doc =format(_('<an alias,%s %n>\n\nAlias for %q.'),
-                flexargs, (biggestDollar, _('argument')), alias)
+    try:
+        doc = format(_('<an alias,%s %n>\n\nAlias for %q.'),
+                    flexargs, (biggestDollar, _('argument')), alias)
+    except UnicodeDecodeError:
+        if sys.version_info[0] == 2:
+            alias = alias.decode('utf8')
+        doc = format(_('<an alias,%s %n>\n\nAlias for %q.'),
+                    flexargs, (biggestDollar, _('argument')), alias)
     f = utils.python.changeFunctionName(f, name, doc)
     return f
 
@@ -259,7 +272,7 @@ class Alias(callbacks.Plugin):
         for (alias, (command, locked, _)) in self.aliases.items():
             try:
                 self.addAlias(irc, alias, command, locked)
-            except Exception, e:
+            except Exception as e:
                 self.log.exception('Exception when trying to add alias %s.  '
                                    'Removing from the Alias database.', alias)
                 del self.aliases[alias]
@@ -310,28 +323,31 @@ class Alias(callbacks.Plugin):
             irc.error(_('There is no such alias.'))
     unlock = wrap(unlock, [('checkCapability', 'admin'), 'commandName'])
 
-    _invalidCharsRe = re.compile(r'[\[\]\s]')
+    _validNameRe = re.compile(r'^[a-z.|!?][a-z0-9.|!]*$')
     def addAlias(self, irc, name, alias, lock=False):
-        if self._invalidCharsRe.search(name):
-            raise AliasError, 'Names cannot contain spaces or square brackets.'
+        if not self._validNameRe.search(name):
+            raise AliasError('Names can only contain alphanumerical '
+                    'characters, dots, pipes, and '
+                    'exclamation/interrogatin marks '
+                    '(and the first character cannot be a number).')
         realName = callbacks.canonicalName(name)
         if name != realName:
             s = format(_('That name isn\'t valid.  Try %q instead.'), realName)
-            raise AliasError, s
+            raise AliasError(s)
         name = realName
         if self.isCommandMethod(name):
             if realName not in self.aliases:
                 s = 'You can\'t overwrite commands in this plugin.'
-                raise AliasError, s
+                raise AliasError(s)
         if name in self.aliases:
             (currentAlias, locked, _) = self.aliases[name]
             if locked and currentAlias != alias:
-                raise AliasError, format('Alias %q is locked.', name)
+                raise AliasError(format('Alias %q is locked.', name))
         try:
             f = makeNewAlias(name, alias)
             f = types.MethodType(f, self)
         except RecursiveAlias:
-            raise AliasError, 'You can\'t define a recursive alias.'
+            raise AliasError('You can\'t define a recursive alias.')
         if '.' in name or '|' in name:
             aliasGroup = self.registryValue('escapedaliases', value=False)
             confname = escapeAlias(name)
@@ -352,11 +368,15 @@ class Alias(callbacks.Plugin):
         if name in self.aliases and self.isCommandMethod(name):
             if evenIfLocked or not self.aliases[name][1]:
                 del self.aliases[name]
-                conf.supybot.plugins.Alias.aliases.unregister(name)
+                if '.' in name or '|' in name:
+                    conf.supybot.plugins.Alias.escapedaliases.unregister(
+                            escapeAlias(name))
+                else:
+                    conf.supybot.plugins.Alias.aliases.unregister(name)
             else:
-                raise AliasError, 'That alias is locked.'
+                raise AliasError('That alias is locked.')
         else:
-            raise AliasError, 'There is no such alias.'
+            raise AliasError('There is no such alias.')
 
     @internationalizeDocstring
     def add(self, irc, msg, args, name, alias):
@@ -377,7 +397,7 @@ class Alias(callbacks.Plugin):
             self.log.info('Adding alias %q for %q (from %s)',
                           name, alias, msg.prefix)
             irc.replySuccess()
-        except AliasError, e:
+        except AliasError as e:
             irc.error(str(e))
     add = wrap(add, ['commandName', 'text'])
 
@@ -391,7 +411,7 @@ class Alias(callbacks.Plugin):
             self.removeAlias(name)
             self.log.info('Removing alias %q (from %s)', name, msg.prefix)
             irc.replySuccess()
-        except AliasError, e:
+        except AliasError as e:
             irc.error(str(e))
     remove = wrap(remove, ['commandName'])
 

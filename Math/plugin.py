@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2002-2004, Jeremiah Fincher
-# Copyright (c) 2008-2009, James Vega
+# Copyright (c) 2008-2009, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -42,7 +42,10 @@ import supybot.callbacks as callbacks
 from supybot.i18n import PluginInternationalization, internationalizeDocstring
 _ = PluginInternationalization('Math')
 
-convertcore = utils.python.universalImport('local.convertcore')
+try:
+    from local import convertcore
+except ImportError:
+    from .local import convertcore
 
 baseArg = ('int', 'base', lambda i: i <= 36)
 
@@ -169,6 +172,13 @@ class Math(callbacks.Plugin):
         crash to the bot with something like '10**10**10**10'.  One consequence
         is that large values such as '10**24' might not be exact.
         """
+        try:
+            text = str(text)
+        except UnicodeEncodeError:
+            irc.error(_("There's no reason you should have fancy non-ASCII "
+                            "characters in your mathematical expression. "
+                            "Please remove them."))
+            return
         if self._calc_match_forbidden_chars.match(text):
             irc.error(_('There\'s really no reason why you should have '
                            'underscores or brackets in your mathematical '
@@ -191,8 +201,8 @@ class Math(callbacks.Plugin):
             else:
                 i = float(s)
             x = complex(i)
-            if x == abs(x):
-                x = abs(x)
+            if x.imag == 0:
+                x = x.real
                 # Need to use string-formatting here instead of str() because
                 # use of str() on large numbers loses information:
                 # str(float(33333333333333)) => '3.33333333333e+13'
@@ -209,9 +219,9 @@ class Math(callbacks.Plugin):
             irc.error(_('The answer exceeded %s or so.') % maxFloat)
         except TypeError:
             irc.error(_('Something in there wasn\'t a valid number.'))
-        except NameError, e:
+        except NameError as e:
             irc.error(_('%s is not a defined function.') % str(e).split()[1])
-        except Exception, e:
+        except Exception as e:
             irc.error(str(e))
     calc = wrap(calc, ['text'])
 
@@ -243,9 +253,9 @@ class Math(callbacks.Plugin):
             irc.error(_('The answer exceeded %s or so.') % maxFloat)
         except TypeError:
             irc.error(_('Something in there wasn\'t a valid number.'))
-        except NameError, e:
+        except NameError as e:
             irc.error(_('%s is not a defined function.') % str(e).split()[1])
-        except Exception, e:
+        except Exception as e:
             irc.error(utils.exnToString(e))
     icalc = wrap(icalc, [('checkCapability', 'trusted'), 'text'])
 
@@ -298,7 +308,7 @@ class Math(callbacks.Plugin):
         if len(stack) == 1:
             irc.reply(str(self._complexToString(complex(stack[0]))))
         else:
-            s = ', '.join(map(self._complexToString, map(complex, stack)))
+            s = ', '.join(map(self._complexToString, list(map(complex, stack))))
             irc.reply(_('Stack: [%s]') % s)
 
     @internationalizeDocstring
@@ -309,10 +319,25 @@ class Math(callbacks.Plugin):
         defaults to 1. For unit information, see 'units' command.
         """
         try:
+            digits = len(str(number).split('.')[1])
+        except IndexError:
+            digits = 0
+        try:
             newNum = convertcore.convert(number, unit1, unit2)
+            if isinstance(newNum, float):
+                zeros = 0
+                for char in str(newNum).split('.')[1]:
+                    if char != '0':
+                        break
+                    zeros += 1
+                # Let's add one signifiant digit. Physicists would not like
+                # that, but common people usually do not give extra zeros...
+                # (for example, with '32 C to F', an extra digit would be
+                # expected).
+                newNum = round(newNum, digits + 1 + zeros)
             newNum = self._floatToString(newNum)
             irc.reply(str(newNum))
-        except convertcore.UnitDataError, ude:
+        except convertcore.UnitDataError as ude:
             irc.error(str(ude))
     convert = wrap(convert, [optional('float', 1.0),'something','to','text'])
 

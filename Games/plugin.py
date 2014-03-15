@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2003-2005, Jeremiah Fincher
-# Copyright (c) 2010, James Vega
+# Copyright (c) 2010, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,7 @@
 
 import re
 import random
-from itertools import imap
+
 
 import supybot.utils as utils
 from supybot.commands import *
@@ -62,7 +62,7 @@ class Games(callbacks.Plugin):
         For example, 2d6 will roll 2 six-sided dice; 10d10 will roll 10
         ten-sided dice.
         """
-        (dice, sides) = imap(int, m.groups())
+        (dice, sides) = list(map(int, m.groups()))
         if dice > 1000:
             irc.error(_('You can\'t roll more than 1000 dice.'))
         elif sides > 100:
@@ -126,7 +126,7 @@ class Games(callbacks.Plugin):
         """
         if spin:
             self._rouletteBullet = random.randrange(0, 6)
-            irc.reply(ircutils.bold(ircutils.mircColor('*SPIN*','10')) + ' Are you feeling lucky?', prefixNick=True)
+            irc.reply(_('*SPIN* Are you feeling lucky?'), prefixNick=False)
             return
         channel = msg.args[0]
         if self._rouletteChamber == self._rouletteBullet:
@@ -134,13 +134,13 @@ class Games(callbacks.Plugin):
             self._rouletteChamber = random.randrange(0, 6)
             if irc.nick in irc.state.channels[channel].ops or \
                     irc.nick in irc.state.channels[channel].halfops:
-                irc.queueMsg(ircmsgs.kick(channel, msg.nick, ircutils.bold(ircutils.mircColor('BANG!','4'))))
+                irc.queueMsg(ircmsgs.kick(channel, msg.nick, 'BANG!'))
             else:
-                irc.reply(ircutils.bold(ircutils.mircColor('*BANG*','4')) + '...Hey, who put a blank in here?!',
-                          prefixNick=True)
-            irc.reply('reloads and spins the chambers.', action=True)
+                irc.reply(_('*BANG* Hey, who put a blank in here?!'),
+                          prefixNick=False)
+            irc.reply(_('reloads and spins the chambers.'), action=True)
         else:
-            irc.reply(ircutils.bold(ircutils.mircColor('*click*','14')),prefixNick=True)
+            irc.reply(_('*click*'))
             self._rouletteChamber += 1
             self._rouletteChamber %= 6
     roulette = wrap(roulette, ['public', additional(('literal', 'spin'))])

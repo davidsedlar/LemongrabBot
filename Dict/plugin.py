@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2002-2004, Jeremiah Fincher
-# Copyright (c) 2008, James Vega
+# Copyright (c) 2008, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -40,12 +40,7 @@ _ = PluginInternationalization('Dict')
 
 import random
 
-try:
-    dictclient = utils.python.universalImport('dictclient', 'local.dictclient')
-except ImportError:
-    raise callbacks.Error, \
-            'You need to have dictclient installed to use this plugin.  ' \
-            'Download it at <http://quux.org:70/devel/dictclient>'
+from local import dictclient
 
 class Dict(callbacks.Plugin):
     threaded = True
@@ -61,7 +56,7 @@ class Dict(callbacks.Plugin):
             dbs = list(conn.getdbdescs().keys())
             dbs.sort()
             irc.reply(format('%L', dbs))
-        except socket.error, e:
+        except socket.error as e:
             irc.error(utils.web.strError(e))
     dictionaries = wrap(dictionaries)
 
@@ -76,7 +71,7 @@ class Dict(callbacks.Plugin):
             conn = dictclient.Connection(server)
             dbs = conn.getdbdescs().keys()
             irc.reply(utils.iter.choice(dbs))
-        except socket.error, e:
+        except socket.error as e:
             irc.error(utils.web.strError(e))
     random = wrap(random)
 
@@ -90,7 +85,7 @@ class Dict(callbacks.Plugin):
         try:
             server = conf.supybot.plugins.Dict.server()
             conn = dictclient.Connection(server)
-        except socket.error, e:
+        except socket.error as e:
             irc.error(utils.web.strError(e), Raise=True)
         dbs = set(conn.getdbdescs())
         if words[0] in dbs:
@@ -144,7 +139,7 @@ class Dict(callbacks.Plugin):
         try:
             server = conf.supybot.plugins.Dict.server()
             conn = dictclient.Connection(server)
-        except socket.error, e:
+        except socket.error as e:
             irc.error(utils.web.strError(e), Raise=True)
 
         dictionary = 'moby-thes'

@@ -47,6 +47,13 @@ class Format(callbacks.Plugin):
         irc.reply(ircutils.bold(text))
     bold = wrap(bold, ['text'])
 
+    @wrap(['text'])
+    def stripformatting(self, irc, msg, args, text):
+        """<text>
+
+        Strips bold, underline, and colors from <text>."""
+        irc.reply(ircutils.stripFormatting(text))
+
     @internationalizeDocstring
     def reverse(self, irc, msg, args, text):
         """<text>
@@ -95,7 +102,7 @@ class Format(callbacks.Plugin):
         if len(bad) != len(good):
             irc.error(_('<chars to translate> must be the same length as '
                       '<chars to replace those with>.'), Raise=True)
-        irc.reply(utils.str.MultipleReplacer(dict(zip(bad, good)))(text))
+        irc.reply(utils.str.MultipleReplacer(dict(list(zip(bad, good))))(text))
     translate = wrap(translate, ['something', 'something', 'text'])
 
     @internationalizeDocstring
@@ -201,7 +208,7 @@ class Format(callbacks.Plugin):
         try:
             s %= tuple(args)
             irc.reply(s)
-        except TypeError, e:
+        except TypeError as e:
             self.log.debug(utils.exnToString(e))
             irc.error(_('Not enough arguments for the format string.'),
                       Raise=True)

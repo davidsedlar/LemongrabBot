@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2002-2004, Jeremiah Fincher
-# Copyright (c) 2008, James Vega
+# Copyright (c) 2008, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -89,19 +89,21 @@ class MathTestCase(PluginTestCase):
         self.assertError('base 4 4')
         self.assertError('base 10 12 A')
 
-        print
-        print "If we have not fixed a bug with Math.base, the following ",
-        print "tests will hang the test-suite."
+        print()
+        print("If we have not fixed a bug with Math.base, the following ")
+        print("tests will hang the test-suite.")
         self.assertRegexp('base 2 10 [base 10 2 -12]', '-12')
         self.assertRegexp('base 16 2 [base 2 16 -110101]', '-110101')
 
     def testCalc(self):
         self.assertResponse('calc 5*0.06', str(5*0.06))
         self.assertResponse('calc 2.0-7.0', str(2-7))
-        self.assertResponse('calc (-1)**.5', 'i')
         self.assertResponse('calc e**(i*pi)+1', '0')
-        self.assertResponse('calc (-5)**.5', '2.2360679775i')
-        self.assertResponse('calc -((-5)**.5)', '-2.2360679775i')
+        if sys.version_info[0] >= 3:
+            # Python 2 has bad handling of exponentiation of negative numbers
+            self.assertResponse('calc (-1)**.5', 'i')
+            self.assertRegexp('calc (-5)**.5', '2.236067977[0-9]+i')
+            self.assertRegexp('calc -((-5)**.5)', '-2.236067977[0-9]+i')
         self.assertNotRegexp('calc [9, 5] + [9, 10]', 'TypeError')
         self.assertError('calc [9, 5] + [9, 10]')
         self.assertNotError('calc degrees(2)')

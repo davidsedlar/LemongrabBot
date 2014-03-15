@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2002-2005, Jeremiah Fincher
-# Copyright (c) 2009-2010, James Vega
+# Copyright (c) 2009-2010, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,7 @@
 import os
 import time
 import string
+import urllib
 
 import supybot.conf as conf
 import supybot.ircdb as ircdb
@@ -39,13 +40,11 @@ from supybot.commands import *
 import supybot.plugins as plugins
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
+import supybot.httpserver as httpserver
 from supybot.i18n import PluginInternationalization, internationalizeDocstring
 _ = PluginInternationalization('Factoids')
 
-try:
-    import sqlite3
-except ImportError:
-    from pysqlite2 import dbapi2 as sqlite3 # for python2.4
+import sqlite3
 
 import re
 from supybot.utils.seq import dameraulevenshtein
@@ -79,10 +78,141 @@ def getFactoidId(irc, msg, args, state):
 addConverter('factoid', getFactoid)
 addConverter('factoidId', getFactoidId)
 
+
+PAGE_SKELETON = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Factoids</title>
+    <link rel="stylesheet" href="/default.css" />
+</head>
+%s
+</html>"""
+
+DEFAULT_TEMPLATES = {
+        'factoids/index.html': PAGE_SKELETON % """\
+<body class="purelisting">
+    <h1>Factoids</h1>
+    <form action="." method="post">
+        <label for="chan">Channel name:</label>
+        <input type="text" placeholder="#channel" name="chan" id="chan" />
+        <input type="submit" name="submit" value="view" />
+    </form>
+</body>""",
+        'factoids/channel.html': PAGE_SKELETON % """\
+<body class="puretable">
+    <h1>Factoids of %(channel)s</h1>
+    <table>
+        <tr class="header">
+            <th class="key">""" + _('key') + """</th>
+            <th class="id">""" + _('id') + """</th>
+            <th class="fact">""" + _('fact') + """</th>
+        </tr>
+        %(rows)s
+    </table>
+</body>"""
+}
+httpserver.set_default_templates(DEFAULT_TEMPLATES)
+
+class FactoidsCallback(httpserver.SupyHTTPServerCallback):
+    name = 'Factoids web interface'
+
+    def doGet(self, handler, path):
+        parts = path.split('/')[1:]
+        if path == '/':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(httpserver.get_template('factoids/index.html'))
+        elif len(parts) == 2:
+            channel = urllib.unquote(parts[0])
+            if not ircutils.isChannel(channel):
+                self.send_response(404)
+                self.send_header('Content-type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(httpserver.get_template('generic/error.html')%
+                    {'title': 'Factoids - not a channel',
+                     'error': 'This is not a channel'})
+                return
+            if not self._plugin.registryValue('web.channel', channel):
+                self.send_response(403)
+                self.send_header('Content-type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(httpserver.get_template('generic/error.html')%
+                    {'title': 'Factoids - unavailable',
+                     'error': 'This channel does not exist or its factoids '
+                              'are not available here.'})
+                return
+            db = self._plugin.getDb(channel)
+            cursor = db.cursor()
+            cursor.execute("""SELECT keys.key, factoids.id, factoids.fact
+                              FROM factoids, keys, relations
+                              WHERE relations.key_id=keys.id AND relations.fact_id=factoids.id
+                              """)
+            factoids = {}
+            for (key, id_, fact) in cursor.fetchall():
+                if key not in factoids:
+                    factoids[key] = {}
+                factoids[key][id_] = fact
+            content = ''
+            keys = factoids.keys()
+            keys.sort()
+            for key in keys:
+                facts = factoids[key]
+                content += '<tr>'
+                content += ('<td rowspan="%i" class="key">'
+                                '<a name="%s" href="#%s">%s</a>'
+                           '</td>') % (len(facts), key, key, key)
+                for id_, fact in facts.items():
+                    content += '<td class="id">%i</td>' % id_
+                    content += '<td class="fact">%s</td>' % fact
+                    content += '</tr><tr>'
+                content = content[:-len('<tr>')]
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(httpserver.get_template('factoids/channel.html')%
+                    {'channel': channel, 'rows': content})
+    def doPost(self, handler, path, form):
+        if 'chan' in form:
+            self.send_response(303)
+            self.send_header('Location',
+                    './%s/' % urllib.quote(form['chan'].value))
+            self.end_headers()
+        else:
+            self.send_response(400)
+            self.send_header('Content-type', 'text/plain; charset=utf-8')
+            self.end_headers()
+            self.wfile.write('Missing field \'chan\'.')
+
 class Factoids(callbacks.Plugin, plugins.ChannelDBHandler):
     def __init__(self, irc):
         callbacks.Plugin.__init__(self, irc)
         plugins.ChannelDBHandler.__init__(self)
+        self._http_running = False
+        conf.supybot.plugins.Factoids.web.enable.addCallback(self._doHttpConf)
+        if self.registryValue('web.enable'):
+            self._startHttp()
+    def _doHttpConf(self, *args, **kwargs):
+        if self.registryValue('web.enable'):
+            if not self._http_running:
+                self._startHttp()
+        else:
+            if self._http_running:
+                self._stopHttp()
+    def _startHttp(self):
+        callback = FactoidsCallback()
+        callback._plugin = self
+        httpserver.hook('factoids', callback)
+        self._http_running = True
+    def _stopHttp(self):
+        httpserver.unhook('factoids')
+        self._http_running = False
+    def die(self):
+        if self.registryValue('web.enable'):
+            self._stopHttp()
+        super(self.__class__, self).die()
 
     def makeDb(self, filename):
         if os.path.exists(filename):
@@ -114,7 +244,7 @@ class Factoids(callbacks.Plugin, plugins.ChannelDBHandler):
 
     def getCommandHelp(self, command, simpleSyntax=None):
         method = self.getCommandMethod(command)
-        if method.im_func.func_name == 'learn':
+        if method.im_func.__name__ == 'learn':
             chan = None
             if dynamic.msg is not None:
                 chan = dynamic.msg.args[0]
@@ -140,6 +270,9 @@ class Factoids(callbacks.Plugin, plugins.ChannelDBHandler):
         return (keyresults, factresults,)
     
     def learn(self, irc, msg, args, channel, key, factoid):
+        if self.registryValue('requireVoice', channel) and \
+                not irc.state.channels[channel].isVoicePlus(msg.nick):
+            irc.error(_('You have to be at least voiced to teach factoids.'))
         
         # if neither key nor factoid exist, add them.
         # if key exists but factoid doesn't, add factoid, link it to existing key
@@ -175,7 +308,7 @@ class Factoids(callbacks.Plugin, plugins.ChannelDBHandler):
         else:
             irc.error("This key-factoid relationship already exists.")
         
-    learn = wrap(learn, ['factoid'])
+    learn = wrap(learn, ['factoid'], checkDoc=False)
     learn._fake__doc__ = _("""[<channel>] <key> %s <value>
 
                          Associates <key> with <value>.  <channel> is only
@@ -219,7 +352,7 @@ class Factoids(callbacks.Plugin, plugins.ChannelDBHandler):
             return []
         flkeys = [line[0] for line in flkeys]
         dl_metrics = [dameraulevenshtein(key, sourcekey) for sourcekey in flkeys]
-        dict_metrics = dict(zip(flkeys, dl_metrics))
+        dict_metrics = dict(list(zip(flkeys, dl_metrics)))
         if min(dl_metrics) <= 2:
             return [key for key,item in dict_metrics.iteritems() if item <= 2]
         if min(dl_metrics) <= 3:
@@ -281,6 +414,7 @@ class Factoids(callbacks.Plugin, plugins.ChannelDBHandler):
     def _replyApproximateFactoids(self, irc, msg, channel, key, error=True):
         if self.registryValue('replyApproximateSearchKeys'):
             factoids = self._searchFactoid(channel, key)
+            factoids.sort()
             if factoids:
                 keylist = ["'%s'" % (fact,) for fact in factoids]
                 keylist = ', '.join(keylist)
@@ -453,10 +587,10 @@ class Factoids(callbacks.Plugin, plugins.ChannelDBHandler):
         """
         db = self.getDb(channel)
         cursor = db.cursor()
-        cursor.execute("UPDATE factoids, keys, relations "
-                "SET factoids.locked=1 WHERE key LIKE ? AND "
-                "factoids.id=relations.fact_id AND "
-                "keys.id=relations.key_id", (key,))
+        cursor.execute("UPDATE factoids "
+                "SET locked=1 WHERE factoids.id IN "
+                "(SELECT fact_id FROM relations WHERE key_id IN "
+                "(SELECT id FROM keys WHERE key LIKE ?));", (key,))
         db.commit()
         irc.replySuccess()
     lock = wrap(lock, ['channel', 'text'])
@@ -471,10 +605,10 @@ class Factoids(callbacks.Plugin, plugins.ChannelDBHandler):
         """
         db = self.getDb(channel)
         cursor = db.cursor()
-        cursor.execute("""UPDATE factoids, keys, relations
-                SET factoids.locked=1 WHERE key LIKE ? AND
-                factoids.id=relations.fact_id AND
-                keys.id=relations.key_id""", (key,))
+        cursor.execute("UPDATE factoids "
+                "SET locked=0 WHERE factoids.id IN "
+                "(SELECT fact_id FROM relations WHERE key_id IN "
+                "(SELECT id FROM keys WHERE key LIKE ?));", (key,))
         db.commit()
         irc.replySuccess()
     unlock = wrap(unlock, ['channel', 'text'])
@@ -515,6 +649,9 @@ class Factoids(callbacks.Plugin, plugins.ChannelDBHandler):
         <channel> is only necessary if
         the message isn't sent in the channel itself.
         """
+        if self.registryValue('requireVoice', channel) and \
+                not irc.state.channels[channel].isVoicePlus(msg.nick):
+            irc.error(_('You have to be at least voiced to remove factoids.'))
         number = None
         if len(words) > 1:
             if words[-1].isdigit():
@@ -559,7 +696,7 @@ class Factoids(callbacks.Plugin, plugins.ChannelDBHandler):
     def random(self, irc, msg, args, channel):
         """[<channel>]
 
-        Returns a random factoid from the database for <channel>.  <channel>
+        Returns random factoids from the database for <channel>.  <channel>
         is only necessary if the message isn't sent in the channel itself.
         """
         db = self.getDb(channel)

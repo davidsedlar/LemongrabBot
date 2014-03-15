@@ -1,0 +1,159 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR ORGANIZATION
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"POT-Creation-Date: 2014-01-22 07:53+CET\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: ENCODING\n"
+"Generated-By: pygettext.py 1.5\n"
+
+
+#: config.py:55
+msgid ""
+"The maximum number of words allowed in a\n"
+"    command name. Setting this to an high value may slow down your bot\n"
+"    on long commands."
+msgstr ""
+
+#: plugin.py:129 plugin.py:368
+msgid "This Aka already exists."
+msgstr ""
+
+#: plugin.py:156 plugin.py:173 plugin.py:190
+msgid "This Aka does not exist"
+msgstr ""
+
+#: plugin.py:158
+msgid "This Aka is already locked."
+msgstr ""
+
+#: plugin.py:175
+msgid "This Aka is already unlocked."
+msgstr ""
+
+#: plugin.py:235
+#, docstring
+msgid ""
+"Add the help for \"@plugin help Aka\" here\n"
+"    This should describe *how* to use this plugin."
+msgstr ""
+
+#: plugin.py:342
+msgid "You've attempted more nesting than is currently allowed on this bot."
+msgstr ""
+
+#: plugin.py:346
+msgid " at least"
+msgstr ""
+
+#: plugin.py:355
+msgid "Locked by %s at %s"
+msgstr ""
+
+#: plugin.py:358
+msgid ""
+"<an alias,%s %n>\n"
+"\n"
+"Alias for %q.%s"
+msgstr ""
+
+#: plugin.py:359
+msgid "argument"
+msgstr ""
+
+#: plugin.py:365
+msgid "You can't overwrite commands in this plugin."
+msgstr ""
+
+#: plugin.py:370
+msgid "This Aka has too many spaces in its name."
+msgstr ""
+
+#: plugin.py:375
+msgid "Can't mix $* and optional args (@1, etc.)"
+msgstr ""
+
+#: plugin.py:377
+msgid "There can be only one $* in an alias."
+msgstr ""
+
+#: plugin.py:384
+msgid "This Aka is locked."
+msgstr ""
+
+#: plugin.py:388
+#, docstring
+msgid ""
+"[--channel <#channel>] <name> <command>\n"
+"\n"
+"        Defines an alias <name> that executes <command>.  The <command>\n"
+"        should be in the standard \"command argument [nestedcommand argument]\"\n"
+"        arguments to the alias; they'll be filled with the first, second, etc.\n"
+"        arguments.  $1, $2, etc. can be used for required arguments.  @1, @2,\n"
+"        etc. can be used for optional arguments.  $* simply means \"all\n"
+"        arguments that have not replaced $1, $2, etc.\", ie. it will also\n"
+"        include optional arguments.\n"
+"        "
+msgstr ""
+
+#: plugin.py:402 plugin.py:428 plugin.py:460 plugin.py:483
+msgid "%r is not a valid channel."
+msgstr ""
+
+#: plugin.py:420
+#, docstring
+msgid ""
+"[--channel <#channel>] <name>\n"
+"\n"
+"        Removes the given alias, if unlocked.\n"
+"        "
+msgstr ""
+
+#: plugin.py:442
+#, docstring
+msgid ""
+"Check if the user has any of the required capabilities to manage\n"
+"        the regexp database."
+msgstr ""
+
+#: plugin.py:452
+#, docstring
+msgid ""
+"[--channel <#channel>] <alias>\n"
+"\n"
+"        Locks an alias so that no one else can change it.\n"
+"        "
+msgstr ""
+
+#: plugin.py:475
+#, docstring
+msgid ""
+"[--channel <#channel>] <alias>\n"
+"\n"
+"        Unlocks an alias so that people can define new aliases over it.\n"
+"        "
+msgstr ""
+
+#: plugin.py:498
+#, docstring
+msgid ""
+"takes no arguments\n"
+"\n"
+"        Imports the Alias database into Aka's, and clean the former."
+msgstr ""
+
+#: plugin.py:503
+msgid "Alias plugin is not loaded."
+msgstr ""
+
+#: plugin.py:513
+msgid "Error occured when importing the %n: %L"
+msgstr ""
+

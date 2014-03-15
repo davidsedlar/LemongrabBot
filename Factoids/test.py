@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2002-2005, Jeremiah Fincher
-# Copyright (c) 2010, James Vega
+# Copyright (c) 2010, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,11 +29,9 @@
 ###
 
 from supybot.test import *
+import supybot.conf as conf
 
-try:
-    import sqlite3
-except ImportError:
-    from pysqlite2 import dbapi2 as sqlite3 # for python2.4
+import sqlite3
 
 class FactoidsTestCase(ChannelPluginTestCase):
     plugins = ('Factoids',)
@@ -75,6 +73,12 @@ class FactoidsTestCase(ChannelPluginTestCase):
 
         self.assertError('learn foo bar baz') # No 'as'
         self.assertError('learn foo bar') # No 'as'
+
+        with conf.supybot.plugins.Factoids.requireVoice.context(True):
+            self.assertError('learn jemfinch as my primary author')
+            self.irc.feedMsg(ircmsgs.mode(self.channel,
+                args=('+h', self.nick)))
+            self.assertNotError('learn jemfinch as my primary author')
 
     def testChangeFactoid(self):
         self.assertNotError('learn foo as bar')
@@ -207,5 +211,11 @@ class FactoidsTestCase(ChannelPluginTestCase):
     def testQuoteHandling(self):
         self.assertNotError('learn foo as "\\"bar\\""')
         self.assertRegexp('whatis foo', r'"bar"')
+
+    def testLock(self):
+        self.assertNotError('learn foo as bar')
+        self.assertNotError('lock foo')
+        self.assertNotError('unlock foo')
+
 
 # vim:set shiftwidth=4 softtabstop=4 expandtab textwidth=79:

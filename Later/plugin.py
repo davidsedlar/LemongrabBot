@@ -69,7 +69,7 @@ class Later(callbacks.Plugin):
     def _openNotes(self):
         try:
             fd = open(self.filename)
-        except EnvironmentError, e:
+        except EnvironmentError as e:
             self.log.warning('Couldn\'t open %s: %s', self.filename, e)
             return
         reader = csv.reader(fd)
@@ -79,7 +79,7 @@ class Later(callbacks.Plugin):
 
     def _timestamp(self, when):
         #format = conf.supybot.reply.format.time()
-        diff = time.time() - when
+        diff = when - time.time()
         try:
             return _('%s ago') % utils.timeElapsed(diff, seconds=False)
         except ValueError:
@@ -150,7 +150,7 @@ class Later(callbacks.Plugin):
     def note(self, irc, msg, args, nick, text):
         """<nick> <text>
 
-        Tells <nick> <text> the next time <nick> is in seen.  <nick> can
+        Tells <nick> <text> the next time <nick> is seen.  <nick> can
         contain wildcard characters, and the first matching nick will be
         given the note.
         """
@@ -245,11 +245,11 @@ class Later(callbacks.Plugin):
             private = self.registryValue('private')
             for (when, whence, note) in notes:
                 s = self._formatNote(when, whence, note)
-                irc.reply(s, private=private, prefixNick=True)
+                irc.reply(s, private=private, prefixNick=not private)
             self._flushNotes()
 
     def _formatNote(self, when, whence, note):
-        return _('Sent %s <%s> %s') % (self._timestamp(when), whence, note)
+        return _('Sent %s: <%s> %s') % (self._timestamp(when), whence, note)
 
     def doJoin(self, irc, msg):
         if self.registryValue('tellOnJoin'):

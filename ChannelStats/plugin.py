@@ -1,6 +1,6 @@
 ###
 # Copyright (c) 2002-2004, Jeremiah Fincher
-# Copyright (c) 2009-2010, James Vega
+# Copyright (c) 2009-2010, James McCoy
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -135,7 +135,7 @@ class StatsDB(plugins.ChannelUserDB):
         return v.values()
 
     def deserialize(self, channel, id, L):
-        L = map(int, L)
+        L = list(map(int, L))
         if id == 'channelStats':
             return ChannelStat(*L)
         else:
@@ -336,9 +336,9 @@ class ChannelStats(callbacks.Plugin):
                     v = eval(expr, e, e)
                 except ZeroDivisionError:
                     v = float('inf')
-                except NameError, e:
+                except NameError as e:
                     irc.errorInvalid(_('stat variable'), str(e).split()[1])
-                except Exception, e:
+                except Exception as e:
                     irc.error(utils.exnToString(e), Raise=True)
                 if id == 0:
                     users.append((v, irc.nick))
@@ -358,11 +358,15 @@ class ChannelStats(callbacks.Plugin):
         Returns the statistics for <channel>.  <channel> is only necessary if
         the message isn't sent on the channel itself.
         """
-        if msg.nick not in irc.state.channels[channel].users:
-            irc.error(format('You must be in %s to use this command.', channel))
-            return
+        if channel not in irc.state.channels:
+            irc.error(_('I am not in %s.') % channel, Raise=True)
+        elif msg.nick not in irc.state.channels[channel].users:
+            irc.error(_('You must be in %s to use this command.') % channel,
+                    Raise=True)
         try:
-            stats = self.db.getChannelStats(channel)
+            channeldb = conf.supybot.databases.plugins.channelSpecific. \
+                    getChannelLink(channel)
+            stats = self.db.getChannelStats(channeldb)
             curUsers = len(irc.state.channels[channel].users)
             s = format(_('On %s there %h been %i messages, containing %i '
                        'characters, %n, %n, and %n; '
@@ -387,7 +391,7 @@ class ChannelStats(callbacks.Plugin):
             irc.reply(s)
         except KeyError:
             irc.error(format(_('I\'ve never been on %s.'), channel))
-    channelstats = wrap(channelstats, ['channeldb'])
+    channelstats = wrap(channelstats, ['channel'])
 
 
 Class = ChannelStats
