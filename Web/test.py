@@ -49,8 +49,28 @@ class WebTestCase(ChannelPluginTestCase):
             self.assertNotError('size http://www.slashdot.org/')
 
         def testTitle(self):
-            self.assertRegexp('title http://www.slashdot.org/',
-                              'News for nerds, stuff that matters')
+            self.assertResponse('title http://www.slashdot.org/',
+                                'Slashdot - News for nerds, stuff that matters')
+            # Amazon add a bunch of scripting stuff to the top of their page,
+            # so we need to allow for a larger peekSize
+# Actually, screw Amazon. Even bumping this up to 10k doesn't give us enough
+# info.
+#            try:
+#                orig = conf.supybot.protocols.http.peekSize()
+#                conf.supybot.protocols.http.peekSize.setValue(8192)
+#                self.assertNotRegexp('title '
+#                             'http://www.amazon.com/exec/obidos/tg/detail/-/'
+#                             '1884822312/qid=1063140754/sr=8-1/ref=sr_8_1/'
+#                             '002-9802970-2308826?v=glance&s=books&n=507846',
+#                             'no HTML title')
+#            finally:
+#                conf.supybot.protocols.http.peekSize.setValue(orig)
+            # Checks the non-greediness of the regexp
+            self.assertResponse('title '
+                                'http://www.space.com/scienceastronomy/'
+                                'jupiter_dark_spot_031023.html',
+                                'SPACE.com -- Mystery Spot on Jupiter Baffles '
+                                'Astronomers')
             # Checks for @title not-working correctly
             self.assertResponse('title '
                 'http://www.catb.org/~esr/jargon/html/F/foo.html',
@@ -65,17 +85,21 @@ class WebTestCase(ChannelPluginTestCase):
             # part of it.
             self.assertRegexp('title http://www.n-e-r-d.com/', 'N.*E.*R.*D')
             # Checks that the parser doesn't hang on invalid tags
-            print()
-            print("If we have not fixed a bug with the parser, the following")
-            print("test will hang the test-suite.")
+            print
+            print "If we have not fixed a bug with the parser, the following",
+            print "test will hang the test-suite."
             self.assertNotError(
                         'title http://www.youtube.com/watch?v=x4BtiqPN4u8')
+
+        def testNetcraft(self):
+            self.assertNotError('netcraft slashdot.org')
 
         def testTitleSnarfer(self):
             try:
                 conf.supybot.plugins.Web.titleSnarfer.setValue(True)
-                self.assertSnarfRegexp('http://microsoft.com/',
-                                         'Microsoft')
+                self.assertSnarfResponse('http://microsoft.com/',
+                                         'Title: Microsoft Corporation'
+                                         ' (at microsoft.com)')
             finally:
                 conf.supybot.plugins.Web.titleSnarfer.setValue(False)
 
@@ -93,24 +117,6 @@ class WebTestCase(ChannelPluginTestCase):
                     conf.supybot.plugins.Web.titleSnarfer.setValue(title)
             finally:
                 conf.supybot.plugins.Web.nonSnarfingRegexp.setValue(snarf)
-
-        def testWhitelist(self):
-            fm = conf.supybot.plugins.Web.fetch.maximum()
-            uw = conf.supybot.plugins.Web.urlWhitelist()
-            try:
-                conf.supybot.plugins.Web.fetch.maximum.set(1024)
-                self.assertNotError('web fetch http://fsf.org')
-                conf.supybot.plugins.Web.urlWhitelist.set('http://slashdot.org')
-                self.assertError('web fetch http://fsf.org')
-                self.assertError('wef title http://fsf.org')
-                self.assertError('web fetch http://slashdot.org.evildomain.com')
-                self.assertNotError('web fetch http://slashdot.org')
-                self.assertNotError('web fetch http://slashdot.org/recent')
-                conf.supybot.plugins.Web.urlWhitelist.set('http://slashdot.org http://fsf.org')
-                self.assertNotError('doctype http://fsf.org')
-            finally:
-                conf.supybot.plugins.Web.urlWhitelist.set('')
-                conf.supybot.plugins.Web.fetch.maximum.set(fm)
 
     def testNonSnarfingRegexpConfigurable(self):
         self.assertSnarfNoResponse('http://foo.bar.baz/', 2)

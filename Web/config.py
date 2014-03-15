@@ -49,32 +49,14 @@ Web = conf.registerPlugin('Web')
 conf.registerChannelValue(Web, 'titleSnarfer',
     registry.Boolean(False, _("""Determines whether the bot will output the
     HTML title of URLs it sees in the channel.""")))
-conf.registerChannelValue(Web, 'snarferReportIOExceptions',
-    registry.Boolean(False, _("""Determines whether the bot will notfiy the user
-    about network exceptions like hostnotfound, timeout ....""")))
-conf.registerChannelValue(Web, 'snarferShowTargetDomain',
-    registry.Boolean(False, _("""Determines whether the domain name displayed
-    by the snarfer will be the original one (posted on IRC) or the target one
-    (got after following redirects, if any).""")))
 conf.registerChannelValue(Web, 'nonSnarfingRegexp',
     registry.Regexp(None, _("""Determines what URLs matching the given regexp
     will not be snarfed.  Give the empty string if you have no URLs that you'd
     like to exclude from being snarfed.""")))
 
-conf.registerGlobalValue(Web, 'urlWhitelist',
-    registry.SpaceSeparatedListOfStrings([], """If set, bot will only fetch data
-    from urls in the whitelist, i.e. starting with http://domain/optionalpath/. This will
-    apply to all commands that retrieve data from user-supplied URLs,
-    including fetch, headers, title, doctype."""))
-
 conf.registerGroup(Web, 'fetch')
 conf.registerGlobalValue(Web.fetch, 'maximum',
     registry.NonNegativeInteger(0, _("""Determines the maximum number of
     bytes the bot will download via the 'fetch' command in this plugin.""")))
-
-conf.registerGlobalValue(Web.fetch, 'timeout',
-    registry.NonNegativeInteger(5, """Determines the maximum number of
-    seconds the bot will wait for the site to respond, when using the 'fetch'
-    command in this plugin. If 0, will use socket.defaulttimeout"""))
 
 # vim:set shiftwidth=4 softtabstop=4 expandtab textwidth=79:
