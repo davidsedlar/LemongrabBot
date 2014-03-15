@@ -133,29 +133,31 @@ class Web(callbacks.PluginRegexp):
             if callbacks.addressed(irc.nick, msg):
                 return
             if self.registryValue('titleSnarfer', channel):
-                youtube_pattern = re.compile('(?:www.|)(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/ytscreeningroom\?v=|\/feeds\/api\/videos\/|\/user\S*[^\w\-\s]|\S*[^\w\-\s]))([\w\-]{11})[a-z0-9;:@?&%=+\/\$_.-]*')
+				youtube_pattern = re.compile('(?:www.|)(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/ytscreeningroom\?v=|\/feeds\/api\/videos\/|\/user\S*[^\w\-\s]|\S*[^\w\-\s]))([\w\-]{11})[a-z0-9;:@?&%=+\/\$_.-]*')
+					
+				m = youtube_pattern.search(msg.args[1]);
+				if(m):
+					r = requests.get('http://gdata.youtube.com/feeds/api/videos/%s?v=2&alt=json' % m.group(1))
+					data = json.loads(r.content)
+					try:
+						likes = float(data['entry']["yt$rating"]['numLikes'])
+					except KeyError:
+						likes = 0
+					try:
+						dislikes = float(data['entry']["yt$rating"]['numDislikes'])
+					except KeyError:
+						dislikes = 0
+					denom = likes + dislikes
+					if denom is 0:
+						rating = 0.0
+					else: 
+						rating = (likes/(likes+dislikes))*100
+						rating = round(float(rating))
+					message = (ircutils.bold('Title: ') +  '%s - ' + ircutils.bold('Views: ') + '%s | ' + ircutils.bold('Rating: ') + '%s%% | %s likes, %s dislikes') % (data['entry']['title']['$t'], data['entry']['yt$statistics']['viewCount'],rating,int(likes),int(dislikes))
+					message = message.encode("utf-8", "replace")
+					irc.queueMsg(ircmsgs.privmsg(msg.args[0], message))
+
                         
-                m = youtube_pattern.search(msg.args[1]);
-                if(m):
-                    r = requests.get('http://gdata.youtube.com/feeds/api/videos/%s?v=2&alt=json' % m.group(1))
-                    data = json.loads(r.content)
-                    try:
-                        likes = float(data['entry']["yt$rating"]['numLikes'])
-                    except KeyError:
-                        likes = 0
-                    try:
-                        dislikes = float(data['entry']["yt$rating"]['numDislikes'])
-                    except KeyError:
-                        dislikes = 0
-                    denom = likes + dislikes
-                    if denom is 0:
-                        rating = 0.0
-                    else: 
-                        rating = (likes/(likes+dislikes))*100
-                        rating = round(float(rating))
-                    message = (ircutils.bold('Title: ') +  '%s - ' + ircutils.bold('Views: ') + '%s | ' + ircutils.bold('Rating: ') + '%s%% | %s likes, %s dislikes') % (data['entry']['title']['$t'], data['entry']['yt$statistics']['viewCount'],rating,int(likes),int(dislikes))
-                    message = message.encode("utf-8", "replace")
-                    irc.queueMsg(ircmsgs.privmsg(msg.args[0], message))                        
                         
         elif(msg.args[1].find("vimeo") != -1):
             channel = msg.args[0]
@@ -167,55 +169,55 @@ class Web(callbacks.PluginRegexp):
             	vimeo_pattern = re.compile('vimeo.com/(\\d+)')
             	m = vimeo_pattern.search(msg.args[1]);
             	if(m):
-                    r = requests.get("http://vimeo.com/api/v2/video/%s.json" % m.group(1))
-                    data = json.loads(r.content)
-                    message = (ircutils.bold('Title: ') + '%s - ' + ircutils.bold('Views: ') + '%s | ' + ircutils.bold('Likes: ') + '%s') % (data[0]['title'], data[0]['stats_number_of_plays'], data[0]['stats_number_of_likes'])
-                    message = message.encode("utf-8", "replace")
-                    irc.queueMsg(ircmsgs.privmsg(msg.args[0], message))
+                	r = requests.get("http://vimeo.com/api/v2/video/%s.json" % m.group(1))
+                	data = json.loads(r.content)
+                	message = (ircutils.bold('Title: ') + '%s - ' + ircutils.bold('Views: ') + '%s | ' + ircutils.bold('Likes: ') + '%s') % (data[0]['title'], data[0]['stats_number_of_plays'], data[0]['stats_number_of_likes'])
+                	message = message.encode("utf-8", "replace")
+                	irc.queueMsg(ircmsgs.privmsg(msg.args[0], message))
 
         else:
-            channel = msg.args[0]
-            if not irc.isChannel(channel):
-                return
-            if callbacks.addressed(irc.nick, msg):
-                return
-            if self.registryValue('titleSnarfer', channel):
-                url = match.group(0)
-                r = self.registryValue('nonSnarfingRegexp', channel)
-                if r and r.search(url):
-                    self.log.debug('Not titleSnarfing %q.', url)
-                    return
-                try:
-                    size = conf.supybot.protocols.http.peekSize()
-                    fd = utils.web.getUrlFd(url)
-                    text = fd.read(size)
-                    fd.close()
-                except socket.timeout as e:
-                    self.log.info('Couldn\'t snarf title of %u: %s.', url, e)
-                    if self.registryValue('snarferReportIOExceptions', channel):
-                         irc.reply(url+" : "+utils.web.TIMED_OUT, prefixNick=False)
-                    return
-                try:
-                    text = text.decode(utils.web.getEncoding(text) or 'utf8',
-                            'replace')
-                except:
-                    pass
-                parser = Title()
-                try:
-                    parser.feed(text)
-                except HTMLParser.HTMLParseError:
-                    self.log.debug('Encountered a problem parsing %u.  Title may '
-                                   'already be set, though', url)
-                if parser.title:
-                    domain = utils.web.getDomain(fd.geturl()
-                            if self.registryValue('snarferShowTargetDomain', channel)
-                            else url)
-                    title = utils.web.htmlToText(parser.title.strip())
-                    if sys.version_info[0] < 3:
-                        if isinstance(title, unicode):
-                            title = title.encode('utf8', 'replace')
-                    s = format(_('Title: %s (at %s)'), title, domain)
-                    irc.reply(s, prefixNick=False)
+			channel = msg.args[0]
+			if not irc.isChannel(channel):
+				return
+			if callbacks.addressed(irc.nick, msg):
+				return
+			if self.registryValue('titleSnarfer', channel):
+				url = match.group(0)
+				r = self.registryValue('nonSnarfingRegexp', channel)
+				if r and r.search(url):
+					self.log.debug('Not titleSnarfing %q.', url)
+					return
+				try:
+					size = conf.supybot.protocols.http.peekSize()
+					fd = utils.web.getUrlFd(url)
+					text = fd.read(size)
+					fd.close()
+				except socket.timeout as e:
+					self.log.info('Couldn\'t snarf title of %u: %s.', url, e)
+					if self.registryValue('snarferReportIOExceptions', channel):
+						 irc.reply(url+" : "+utils.web.TIMED_OUT, prefixNick=False)
+					return
+				try:
+					text = text.decode(utils.web.getEncoding(text) or 'utf8',
+							'replace')
+				except:
+					pass
+				parser = Title()
+				try:
+					parser.feed(text)
+				except HTMLParser.HTMLParseError:
+					self.log.debug('Encountered a problem parsing %u.  Title may '
+								   'already be set, though', url)
+				if parser.title:
+					domain = utils.web.getDomain(fd.geturl()
+							if self.registryValue('snarferShowTargetDomain', channel)
+							else url)
+					title = utils.web.htmlToText(parser.title.strip())
+					if sys.version_info[0] < 3:
+						if isinstance(title, unicode):
+							title = title.encode('utf8', 'replace')
+					s = format(_('Title: %s (at %s)'), title, domain)
+					irc.reply(s, prefixNick=False)
     titleSnarfer = urlSnarfer(titleSnarfer)
     titleSnarfer.__doc__ = utils.web._httpUrlRe
 
