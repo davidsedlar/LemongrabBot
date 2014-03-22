@@ -157,7 +157,7 @@ class Web(callbacks.PluginRegexp):
                         rating = round(float(rating))
                     message = (ircutils.bold('Title: ') + '%s - ' + ircutils.bold('Views: ') + '%s | ' + ircutils.bold('Rating: ') + '%s%% | %s likes, %s dislikes') % (data['entry']['title']['$t'], data['entry']['yt$statistics']['viewCount'], rating, int(likes), int(dislikes))
                     message = message.encode("utf-8", "replace")
-                    irc.queueMsg(ircmsgs.privmsg(msg.args[0], message))
+                    irc.reply(message, prefixNick=False)
                     
             # Vimeo snarfer   
             elif(url.find("vimeo") != -1):
@@ -168,7 +168,7 @@ class Web(callbacks.PluginRegexp):
                     data = json.loads(r.content)
                     message = (ircutils.bold('Title: ') + '%s - ' + ircutils.bold('Views: ') + '%s | ' + ircutils.bold('Likes: ') + '%s') % (data[0]['title'], data[0]['stats_number_of_plays'], data[0]['stats_number_of_likes'])
                     message = message.encode("utf-8", "replace")
-                    irc.queueMsg(ircmsgs.privmsg(msg.args[0], message))  
+                    irc.reply(message, prefixNick=False)
                           
             else:
                 r = self.registryValue('nonSnarfingRegexp', channel)
@@ -335,6 +335,30 @@ class Web(callbacks.PluginRegexp):
             irc.reply(format(_('That URL appears to have no HTML title '
                              'within the first %S.'), size))
     title = wrap(title, [getopts({'no-filter': ''}), 'httpUrl'])
+
+    _netcraftre = re.compile(r'td align="left">\s+<a[^>]+>(.*?)<a href',
+                             re.S | re.I)
+    @internationalizeDocstring
+    def netcraft(self, irc, msg, args, hostname):
+        """<hostname|ip>
+
+        Returns Netcraft.com's determination of what operating system and
+        webserver is running on the host given.
+        """
+        url = 'http://uptime.netcraft.com/up/graph/?host=' + hostname
+        html = utils.web.getUrl(url) \
+                        .decode('utf8')
+        m = self._netcraftre.search(html)
+        if m:
+            html = m.group(1)
+            s = utils.web.htmlToText(html, tagReplace='').strip()
+            s = s.rstrip('-').strip()
+            irc.reply(s) # Snip off "the site"
+        elif 'We could not get any results' in html:
+            irc.reply(_('No results found for %s.') % hostname)
+        else:
+            irc.error(_('The format of page the was odd.'))
+    netcraft = wrap(netcraft, ['text'])
 
     @internationalizeDocstring
     def urlquote(self, irc, msg, args, text):
