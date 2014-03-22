@@ -155,7 +155,8 @@ class Web(callbacks.PluginRegexp):
                     else: 
                         rating = (likes / (likes + dislikes)) * 100
                         rating = round(float(rating))
-                    message = (ircutils.bold('Title: ') + '%s - ' + ircutils.bold('Views: ') + '%s | ' + ircutils.bold('Rating: ') + '%s%% | %s likes, %s dislikes') % (data['entry']['title']['$t'], data['entry']['yt$statistics']['viewCount'], rating, int(likes), int(dislikes))
+                    views = int(data['entry']['yt$statistics']['viewCount'])  
+                    message = (ircutils.bold('Title: ') + '%s - ' + ircutils.bold('Views: ') + '%s | ' + ircutils.bold('Rating: ') + '%s%% | %s likes, %s dislikes') % (data['entry']['title']['$t'], "{:,}".format(views), rating, "{:,}".format(int(likes)), "{:,}".format(int(dislikes)))
                     message = message.encode("utf-8", "replace")
                     irc.reply(message, prefixNick=False)
                     
