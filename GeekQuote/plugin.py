@@ -69,7 +69,7 @@ class GeekQuote(callbacks.PluginRegexp):
     _tflnReString = r'<textarea readonly="readonly">(?P<text>.*?) http://tfl.nu/[^<]*?</textarea>.*?'\
                     r'<a class="good-night" id="P-(?P<id>\d+)".*?>Good night <span>\((?P<up>\d+)\)</span>.*?'\
                     r'<a class="bad-night" id="N-\d+".*?>Bad night <span>\((?P<down>\d+)\)</span>'
-    _mliaReString = r'<div id="s_(?P<id>\d+)" class="story s">\s*'\
+    _mliaReString = r'<div id="s_(?P<id>\d+)" class="story ">\s*'\
                     r'<div class="sc">(?P<text>.*?)</div>.*?'\
                     r'<span class="v_pos">(?P<up>\d+)</span>.*?'\
                     r'<span class="v_neg">(?P<down>\d+)</span>'
@@ -125,7 +125,7 @@ class GeekQuote(callbacks.PluginRegexp):
                                   site, utils.web.strError(e))
                 last = re.search(r'<li class="last"><a href="(\d+)">', html)
                 last = int(last.group(1))
-                url = 'http://%s/story/%s' % (site, modrandom.randint(1, last))
+                url = 'http://%s/%s' % (site, modrandom.randint(1, last))
             else:
                 url = 'http://%s/story/%s' % (site, id)
         else:
