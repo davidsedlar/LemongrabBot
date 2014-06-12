@@ -125,7 +125,7 @@ class GeekQuote(callbacks.PluginRegexp):
                                   site, utils.web.strError(e))
                 last = re.search(r'<li class="last"><a href="(\d+)">', html)
                 last = int(last.group(1))
-                url = 'http://%s/%s' % (site, modrandom.randint(1, last))
+                url = 'http://%s/story/%s' % (site, modrandom.randint(1, last))
             else:
                 url = 'http://%s/story/%s' % (site, id)
         else:
