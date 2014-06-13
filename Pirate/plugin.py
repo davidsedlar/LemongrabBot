@@ -48,7 +48,7 @@ class Pirate(callbacks.Plugin):
         url = "http://postlikeapirate.com/AJAXtranslate.php?" + query
         doc = urlopen(url)
         response = doc.read().decode('utf8', 'ignore')
-        irc.reply(response.replace('{`{','<').encode('utf8', 'ignore'), prefixNick=True)
+        irc.reply(response.replace('{`{','<').encode('utf8', 'ignore'), prefixNick=False)
 		
 Class = Pirate
 
