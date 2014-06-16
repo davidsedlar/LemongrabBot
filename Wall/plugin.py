@@ -28,6 +28,7 @@
 ###
 
 from supybot.commands import *
+import time
 import supybot.plugins as plugins
 
 class Wall(plugins.ChannelIdDatabasePlugin):
@@ -44,6 +45,20 @@ class Wall(plugins.ChannelIdDatabasePlugin):
         else:
             irc.error('I have no wall quotes in my database for %s.' % channel)
     wall = wrap(wall, ['channeldb'])
+    
+    def write(self, irc, msg, args, channel, text):
+        """[<channel>] <text>
+
+        Adds <text> to the $type database for <channel>.
+        <channel> is only necessary if the message isn't sent in the channel
+        itself.
+        """
+        at = time.time()
+        self.addValidator(irc, text)
+        if text is not None:
+            id = self.db.add(channel, at, msg.nick, text)
+            irc.replySuccess('%s #%s added.' % (self.name(), id))
+    write = wrap(write, ['channeldb', 'text'])
 
 Class = Wall
 
