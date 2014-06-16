@@ -1,5 +1,6 @@
 ###
 # Copyright (c) 2010, quantumlemur
+# Copyright (c) 2011, Valentin Lorentz
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,6 +33,17 @@ from supybot.test import *
 
 class WikipediaTestCase(PluginTestCase):
     plugins = ('Wikipedia',)
+
+    if network:
+        def testWiki(self):
+            self.assertRegexp('wiki Monty Python',
+                              '^Monty Python \(sometimes known as The Pythons\).*')
+            self.assertRegexp('wiki Python', '.*is a disambiguation page.*')
+            self.assertRegexp('wiki Foo', '"Foobar" \(Redirect from "Foo"\): '
+                                          'The terms foobar.*')
+            self.assertRegexp('wiki roegdfjpoepo',
+                              'Not found, or page bad formed.*')
+
 
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
