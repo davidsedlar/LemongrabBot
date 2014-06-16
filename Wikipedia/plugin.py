@@ -155,7 +155,8 @@ class Wikipedia(callbacks.Plugin):
             ##### etree!
             p = tree.xpath("//div[@id='mw-content-text']/p[1]")
             if len(p) == 0 or addr.endswith('Special:Search'):
-                reply += _('Not found, or page bad formed.')
+                irc.reply("""I couldn't find anything for '%s'. Sorry about that.""" % search)
+                return
             else:
                 p = p[0]
                 p = p.text_content()
@@ -165,8 +166,14 @@ class Wikipedia(callbacks.Plugin):
                         p = p.encode('utf-8', 'replace')
                     if isinstance(reply, unicode):
                         reply = reply.encode('utf-8','replace')
-                reply += '%s %s' % (p, ircutils.bold(addr))
+                title = tree.xpath('//*[@class="firstHeading"]')
+                title = title[0].text_content().strip()
+                if sys.version_info[0] < 3:
+                    if isinstance(title, unicode):
+                        title = title.encode('utf-8','replace')
+                reply += '%s : %s' % (ircutils.bold(title), p)
         reply = reply.replace('&amp;','&')
+        irc.reply(addr, prefixNick=False)
         irc.reply(reply)
     wiki = wrap(wiki, ['text'])
 
