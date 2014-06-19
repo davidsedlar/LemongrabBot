@@ -36,6 +36,7 @@ import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
 from random import choice
 import random
+import upsidedown
 
 class TA(callbacks.Plugin):
 
@@ -1440,6 +1441,16 @@ http://i.imgur.com/W6GKujx.gif
         else:
         	return None
     kanye = wrap(kanye,[('text')])
+    
+    def flip(self, irc, msg, args, text):
+        """[<text>]
+        Flips the text"""
+
+        if text is None:
+            text = msg.nick
+        response = "%s %s" % ("(╯°□°）╯︵".decode('utf8'), upsidedown.transform(text))
+        irc.reply(response.encode('utf8'), prefixNick=False)
+    flip = wrap(flip,[optional('text')])
 Class = TA
 
 # vim:set shiftwidth=4 softtabstop=4 expandtab textwidth=79:
