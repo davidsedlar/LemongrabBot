@@ -1311,6 +1311,9 @@ class Assorted(callbacks.Privmsg):
         
         entry = soup.find('li')
         date = entry.find('h3').string.strip()
+        distance =  entry.find('span', {'class' : 'distance'})
+        if distance:
+            date = date + " (%s)" % (distance.string.strip())
         contents = entry.find('div', {'class' : 'contents'}).findAll('p')
         
         for content in contents:
