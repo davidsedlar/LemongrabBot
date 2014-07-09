@@ -1305,4 +1305,17 @@ class Assorted(callbacks.Privmsg):
         else:
             irc.reply("%s: %s" % (nick,_youre_awesome()))
 
+    def tour(self, irc, msg, args):
+        """Live Tour update from cyclingnews.com"""
+        soup = self._url2soup('http://live.cyclingnews.com')
+        
+        entry = soup.find('li')
+        date = entry.find('h3').string.strip()
+        contents = entry.find('div', {'class' : 'contents'}).findAll('p')
+        
+        for content in contents:
+            response = "%s: %s" % (ircutils.bold(date), content.string.strip())
+            irc.reply(response.encode('utf-8'), prefixNick=False)
+    live = tour
+    
 Class = Assorted
