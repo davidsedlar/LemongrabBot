@@ -1305,20 +1305,30 @@ class Assorted(callbacks.Privmsg):
         else:
             irc.reply("%s: %s" % (nick,_youre_awesome()))
 
-    def tour(self, irc, msg, args):
-        """Live Tour update from cyclingnews.com"""
+    def tour(self, irc, msg, args, number):
+        """[<num_of_updates>]
+        Live Tour update from cyclingnews.com"""
         soup = self._url2soup('http://live.cyclingnews.com')
         
-        entry = soup.find('li')
-        date = entry.find('h3').string.strip()
-        distance =  entry.find('span', {'class' : 'distance'})
-        if distance:
-            date = date + " (%s)" % (distance.string.strip())
-        contents = entry.find('div', {'class' : 'contents'}).findAll('p')
+        if not number:
+            number = 1
+        if number > 5:
+            irc.reply("There is a limit of 5 updates".encode('utf-8'), prefixNick=True)
+            return
         
-        for content in contents:
-            response = "%s: %s" % (ircutils.bold(date), content.string.strip())
-            irc.reply(response.encode('utf-8'), prefixNick=False)
-    live = tour
+        entries = soup.findAll('li', limit=number)
+        for entry in entries:
+            date = entry.find('h3').string.strip()
+            distance =  entry.find('span', {'class' : 'distance'})
+            if distance:
+                date = date + " (%s)" % (distance.string.strip())
+            contents = entry.find('div', {'class' : 'contents'}).findAll('p')
+            
+            for content in contents:
+                if content:
+                    response = "%s: %s" % (ircutils.bold(date), content.string.strip())
+                    irc.reply(response.encode('utf-8'), prefixNick=False)
+            
+    tour = wrap(tour,[optional('int')])
     
 Class = Assorted
