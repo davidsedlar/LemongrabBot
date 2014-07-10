@@ -1322,12 +1322,11 @@ class Assorted(callbacks.Privmsg):
             distance =  entry.find('span', {'class' : 'distance'})
             if distance:
                 date = date + " (%s)" % (distance.string.strip())
-            contents = entry.find('div', {'class' : 'contents'}).findAll('p')
+            content = entry.find('div', {'class' : 'contents'}).text
             
-            for content in contents:
-                if content:
-                    response = "%s: %s" % (ircutils.bold(date), content.string.strip())
-                    irc.reply(response.encode('utf-8'), prefixNick=False)
+            if content and content.strip():
+                response = "%s: %s" % (ircutils.bold(date), content.strip())
+                irc.reply(response.encode('utf-8'), prefixNick=False)
             
     tour = wrap(tour,[optional('int')])
     
