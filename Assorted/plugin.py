@@ -1307,7 +1307,7 @@ class Assorted(callbacks.Privmsg):
 
     def tour(self, irc, msg, args, number):
         """[<num_of_updates>]
-        Live Tour update from cyclingnews.com"""
+        Live Tour updates from cyclingnews.com"""
         soup = self._url2soup('http://live.cyclingnews.com')
         
         if not number:
@@ -1317,7 +1317,7 @@ class Assorted(callbacks.Privmsg):
             return
         
         entries = soup.findAll('li', limit=number)
-        for entry in entries:
+        for entry in reversed(entries):
             date = entry.find('h3').string.strip()
             distance =  entry.find('span', {'class' : 'distance'})
             if distance:
