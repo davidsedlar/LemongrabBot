@@ -1322,7 +1322,7 @@ class Assorted(callbacks.Privmsg):
             distance =  entry.find('span', {'class' : 'distance'})
             if distance:
                 date = date + " (%s)" % (distance.string.strip())
-            content = entry.find('div', {'class' : 'contents'}).text
+            content = entry.find('div', {'class' : 'contents'}).getText(separator=" ")
             
             if content and content.strip():
                 response = "%s: %s" % (ircutils.bold(date), content.strip())
