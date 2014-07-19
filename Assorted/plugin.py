@@ -23,6 +23,7 @@ import csv
 import supybot.ircutils as ircutils
 from supybot.commands import *
 import supybot.callbacks as callbacks
+import supybot.schedule as schedule
 
 from beck import BeckGenerator
 import sheendata
@@ -1329,5 +1330,61 @@ class Assorted(callbacks.Privmsg):
                 irc.reply(response.encode('utf-8'), prefixNick=False)
             
     tour = wrap(tour,[optional('int')])
+    
+
+    def _tourliveUpdater(self, irc, msg, args):
+        global latestUpdateId
+        if not latestUpdateId:
+            latestUpdateId = 'entry-0'
+        
+        soup = self._url2soup('http://live.cyclingnews.com')
+        entries = soup.findAll('li', limit=5)
+        
+        for entry in reversed(entries):
+            entryId = entry['id'].strip()
+
+            if (len(entryId) > len(latestUpdateId)) or (entryId > latestUpdateId):
+                latestUpdateId = entryId
+                
+                date = entry.find('h3').string.strip()
+                distance = entry.find('span', {'class' : 'distance'})
+                if distance:
+                    date = date + " (%s)" % (distance.string.strip())
+                content = entry.find('div', {'class' : 'contents'}).getText(separator=" ")
+                
+                if content and content.strip():
+                    response = "%s: %s" % (ircutils.bold(date), content.strip())
+                    irc.reply(response.encode('utf-8'), prefixNick=False)
+            else:
+                continue
+
+    
+    def tourlive(self, irc, msg, args, start):
+        """<start|stop>
+        Start or stop live Tour updates from cyclingnews.com""" 
+        global latestUpdateId
+        
+        if start == 'start':
+            def tourUpdates():
+                self._tourliveUpdater(irc, msg, args)          
+            
+            latestUpdateId = 'entry-0'
+            try:
+                schedule.addPeriodicEvent(tourUpdates, 60, 'tourLive', False)
+            except AssertionError:
+                irc.reply('The Tour live updater was already running!')
+            else:
+                irc.reply('Tour live updater started!')
+        elif start == 'stop':
+            try:
+                schedule.removeEvent('tourLive')
+            except KeyError:
+                irc.reply('The Tour live updater wasn\'t running!')
+            else:
+                irc.reply('Tour live updater stopped.')
+        else:
+            irc.reply('Wrong command argument.')
+                
+    tourlive = wrap(tourlive, ['text'])
     
 Class = Assorted
