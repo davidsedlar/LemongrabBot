@@ -1329,15 +1329,14 @@ class Assorted(callbacks.Privmsg):
                 response = "%s: %s" % (ircutils.bold(date), content.strip())
                 irc.reply(response.encode('utf-8'), prefixNick=False)
             
-    tour = wrap(tour,[optional('int')])
-    
+    tour = wrap(tour,[optional('int')]) 
 
     def _tourliveUpdater(self, irc, msg, args):
         global latestUpdateId
         if not latestUpdateId:
             latestUpdateId = 'entry-0'
         
-        soup = self._url2soup('http://live.cyclingnews.com')
+        soup = self._url2soup('http://live.cyclingnews.com', headers={'Cache-Control': 'max-age=0'})
         entries = soup.findAll('li', limit=5)
         
         for entry in reversed(entries):
