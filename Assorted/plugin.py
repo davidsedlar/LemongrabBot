@@ -1342,7 +1342,7 @@ class Assorted(callbacks.Privmsg):
         for entry in reversed(entries):
             entryId = entry['id'].strip()
 
-            if (len(entryId) > len(latestUpdateId)) or (entryId > latestUpdateId):
+            if (len(entryId) > len(latestUpdateId)) or (len(entryId) == len(latestUpdateId) and entryId > latestUpdateId):
                 latestUpdateId = entryId
                 
                 date = entry.find('h3').string.strip()
