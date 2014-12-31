@@ -79,7 +79,7 @@ class Filter(callbacks.Plugin):
 
     _filterCommands = ['jeffk', 'leet', 'rot13', 'hexlify', 'binary', 'lithp',
                        'scramble', 'morse', 'reverse', 'colorize', 'squish',
-                       'supa1337', 'colorstrip', 'aol', 'rainbow', 'spellit',
+                       'supa1337', 'stripcolor', 'stripformatting', 'aol', 'rainbow', 'spellit',
                        'hebrew', 'undup', 'gnu', 'shrink', 'azn', 'uniud']
     @internationalizeDocstring
     def outfilter(self, irc, msg, args, channel, command):
@@ -430,6 +430,15 @@ class Filter(callbacks.Plugin):
         """
         irc.reply(ircutils.stripColor(text))
     stripcolor = wrap(stripcolor, ['text'])
+    
+    @internationalizeDocstring
+    def stripformatting(self, irc, msg, args, text):
+        """<text>
+
+        Returns <text> stripped of all formatting.
+        """
+        irc.reply(ircutils.stripFormatting(text))
+    stripformatting = wrap(stripformatting, ['text'])
 
     @internationalizeDocstring
     def aol(self, irc, msg, args, text):
